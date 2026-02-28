@@ -1,0 +1,207 @@
+---
+title: Authentication
+description: PIN-based authentication system for employee login and manager validation
+---
+
+The BMS Point-of-Sale System uses a PIN-based authentication system. Employees authenticate using their Employee ID and a 4-digit PIN. The system supports role-based access with automatic PIN security upgrades.
+
+## Login endpoint
+
+Authenticate an employee to access the POS system.
+
+### Request
+
+```http
+POST /api/auth/login
+Content-Type: application/json
+```
+
+```json
+{
+  "employeeId": "0001",
+  "pin": "1234",
+  "selectedRole": "Manager"
+}
+```
+
+#### Parameters
+
+- `employeeId` (string, required): The unique employee identifier
+- `pin` (string, required): The employee's 4-digit PIN
+- `selectedRole` (string, optional): The role selected during login (must match employee's assigned role)
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    "success": true,
+    "employee": {
+      "id": 1,
+      "employeeId": "0001",
+      "name": "Manager",
+      "role": "Manager",
+      "isManager": true,
+      "isActive": true,
+      "createdDate": "2026-02-28T10:30:00Z"
+    },
+    "message": "Login successful"
+  },
+  "message": "Login successful"
+}
+```
+
+### Error responses
+
+#### Employee not found
+
+```json
+{
+  "success": false,
+  "message": "Employee not found",
+  "errorCode": "EMPLOYEE_NOT_FOUND"
+}
+```
+
+#### Invalid PIN
+
+```json
+{
+  "success": false,
+  "message": "Invalid PIN",
+  "errorCode": "INVALID_PIN"
+}
+```
+
+#### Role mismatch
+
+```json
+{
+  "success": false,
+  "message": "You are registered as a Manager. Please select 'Manager' and try again.",
+  "errorCode": "ROLE_MISMATCH"
+}
+```
+
+#### Validation errors
+
+```json
+{
+  "success": false,
+  "message": "Invalid input",
+  "errorCode": "INVALID_INPUT",
+  "errors": [
+    "Employee ID is required",
+    "PIN is required"
+  ]
+}
+```
+
+<Note>
+All failed login attempts are logged for security auditing and tracked in business metrics.
+</Note>
+
+## Manager validation endpoint
+
+Validate a manager's PIN for sensitive operations that require manager approval.
+
+### Request
+
+```http
+POST /api/auth/validate-manager
+Content-Type: application/json
+```
+
+```json
+{
+  "pin": "1234"
+}
+```
+
+#### Parameters
+
+- `pin` (string, required): The manager's PIN to validate
+
+### Success response
+
+```json
+{
+  "success": true,
+  "message": "Manager PIN validated successfully",
+  "managerName": "Manager"
+}
+```
+
+### Failure response
+
+```json
+{
+  "success": false,
+  "message": "Invalid manager PIN"
+}
+```
+
+<Note>
+This endpoint checks the PIN against all active employees with the "Manager" role or `isManager` flag set to true.
+</Note>
+
+## PIN security
+
+The authentication system includes advanced PIN security features:
+
+### Hashed PINs
+
+All PINs are stored using secure hashing via the PIN Security Service. The system uses industry-standard hashing algorithms to protect employee credentials.
+
+### Automatic migration
+
+The system supports backward compatibility with legacy plaintext PINs:
+
+1. When an employee logs in with a legacy plaintext PIN, the system validates it
+2. If validation succeeds, the PIN is automatically upgraded to a hashed version in the background
+3. Subsequent logins use the secure hashed PIN verification
+
+<Note>
+PIN migration happens asynchronously and doesn't impact login performance.
+</Note>
+
+### Activity logging
+
+All authentication events are tracked:
+
+- **Successful logins**: Logged with employee details, role, and IP address
+- **Failed attempts**: Logged with reason (employee not found, invalid PIN, role mismatch)
+- **Security metrics**: All login attempts are tracked in the metrics service for business intelligence
+
+## Role-based access
+
+The system supports two primary roles:
+
+- **Manager**: Full access to all POS features including sensitive operations
+- **Cashier**: Standard access for sales transactions
+
+### Role validation
+
+When a `selectedRole` is provided during login:
+
+1. The system retrieves the employee's assigned role from the database
+2. The selected role is compared against the employee's role (case-insensitive)
+3. If roles don't match, login is rejected with a role mismatch error
+4. The error message indicates the correct role to use
+
+<Note>
+For backward compatibility, if an employee doesn't have a role assigned, the system defaults to "Manager" if `isManager` is true, otherwise "Cashier".
+</Note>
+
+## Session management
+
+<Note>
+The current implementation does not use session tokens or JWT. Authentication state is managed client-side by the Electron application after successful login.
+</Note>
+
+Future enhancements may include:
+
+- Session token generation
+- Token-based authentication for subsequent requests
+- Session expiration and refresh mechanisms

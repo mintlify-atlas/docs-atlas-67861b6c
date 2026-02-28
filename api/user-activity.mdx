@@ -1,0 +1,338 @@
+---
+title: User activity
+description: Track and audit user actions in the BMS POS system
+---
+
+The User Activity API provides comprehensive audit logging and activity tracking for all user actions in the system.
+
+## Get user activities
+
+Retrieve user activity logs with filtering options.
+
+```bash
+GET /api/useractivity
+```
+
+### Query parameters
+
+<ParamField query="startDate" type="string">
+  Filter activities from this date (ISO 8601 format)
+</ParamField>
+
+<ParamField query="endDate" type="string">
+  Filter activities to this date (ISO 8601 format)
+</ParamField>
+
+<ParamField query="userId" type="integer">
+  Filter by specific user ID
+</ParamField>
+
+<ParamField query="actionType" type="string">
+  Filter by action type (e.g., CREATE, UPDATE, DELETE)
+</ParamField>
+
+<ParamField query="limit" type="integer" default="1000">
+  Maximum number of records to return
+</ParamField>
+
+### Response
+
+<ResponseField name="activities" type="array">
+  Array of activity records
+</ResponseField>
+
+<ResponseField name="totalCount" type="integer">
+  Total number of activities returned
+</ResponseField>
+
+### Activity object structure
+
+<ResponseField name="id" type="integer">
+  Unique activity ID
+</ResponseField>
+
+<ResponseField name="userId" type="integer">
+  User who performed the action
+</ResponseField>
+
+<ResponseField name="userName" type="string">
+  Name of the user
+</ResponseField>
+
+<ResponseField name="action" type="string">
+  Description of the action performed
+</ResponseField>
+
+<ResponseField name="details" type="string">
+  Detailed information about the action
+</ResponseField>
+
+<ResponseField name="entityType" type="string">
+  Type of entity affected (e.g., Product, Employee, Sale)
+</ResponseField>
+
+<ResponseField name="entityId" type="integer">
+  ID of the affected entity
+</ResponseField>
+
+<ResponseField name="actionType" type="string">
+  Action category (CREATE, UPDATE, DELETE, etc.)
+</ResponseField>
+
+<ResponseField name="ipAddress" type="string">
+  IP address of the user
+</ResponseField>
+
+<ResponseField name="timestamp" type="string">
+  ISO 8601 timestamp of the action
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/useractivity?startDate=2024-02-01T00:00:00Z&endDate=2024-02-28T23:59:59Z&limit=100" \
+  -H "Content-Type: application/json"
+```
+
+### Example response
+
+```json
+{
+  "activities": [
+    {
+      "id": 1234,
+      "userId": 1,
+      "userName": "Manager",
+      "action": "Created product: Premium Coffee Beans",
+      "details": "Barcode: 1234567890, Price: $24.99, Stock: 100",
+      "entityType": "Product",
+      "entityId": 5,
+      "actionType": "CREATE",
+      "ipAddress": "192.168.1.100",
+      "timestamp": "2024-02-28T10:30:00Z"
+    },
+    {
+      "id": 1235,
+      "userId": 2,
+      "userName": "Cashier",
+      "action": "Processed sale: 2x 5 - Total: $54.98",
+      "details": "Payment: Cash, Items: 1, Discount: $0.00",
+      "entityType": "Sale",
+      "entityId": 123,
+      "actionType": "SALE",
+      "ipAddress": "192.168.1.101",
+      "timestamp": "2024-02-28T11:15:00Z"
+    },
+    {
+      "id": 1236,
+      "userId": 1,
+      "userName": "Manager",
+      "action": "⚠️ MAJOR PRICE CHANGE: Premium Coffee Beans",
+      "details": "Critical price adjustment: $24.99 → $29.99 (+20.0%) - Product: 1234567890 - Requires review",
+      "entityType": "Product",
+      "entityId": 5,
+      "actionType": "PRICE_CHANGE_MAJOR",
+      "ipAddress": "192.168.1.100",
+      "timestamp": "2024-02-28T14:45:00Z"
+    }
+  ],
+  "totalCount": 3
+}
+```
+
+## Get activity summary
+
+Retrieve aggregated activity statistics.
+
+```bash
+GET /api/useractivity/summary
+```
+
+### Query parameters
+
+<ParamField query="startDate" type="string">
+  Filter from this date (ISO 8601 format)
+</ParamField>
+
+<ParamField query="endDate" type="string">
+  Filter to this date (ISO 8601 format)
+</ParamField>
+
+### Response
+
+<ResponseField name="totalActivities" type="integer">
+  Total number of activities in period
+</ResponseField>
+
+<ResponseField name="uniqueUsers" type="integer">
+  Number of unique users who performed actions
+</ResponseField>
+
+<ResponseField name="activityTypes" type="array">
+  Breakdown of activities by type
+</ResponseField>
+
+<ResponseField name="topUsers" type="array">
+  Most active users (top 10)
+</ResponseField>
+
+### Activity type summary structure
+
+<ResponseField name="actionType" type="string">
+  Type of action
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Number of actions of this type
+</ResponseField>
+
+### User activity count structure
+
+<ResponseField name="userId" type="integer">
+  User ID
+</ResponseField>
+
+<ResponseField name="userName" type="string">
+  User name
+</ResponseField>
+
+<ResponseField name="activityCount" type="integer">
+  Number of activities by this user
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/useractivity/summary?startDate=2024-02-01T00:00:00Z&endDate=2024-02-28T23:59:59Z" \
+  -H "Content-Type: application/json"
+```
+
+### Example response
+
+```json
+{
+  "totalActivities": 1250,
+  "uniqueUsers": 8,
+  "activityTypes": [
+    {
+      "actionType": "SALE",
+      "count": 450
+    },
+    {
+      "actionType": "UPDATE",
+      "count": 320
+    },
+    {
+      "actionType": "CREATE",
+      "count": 180
+    },
+    {
+      "actionType": "DELETE",
+      "count": 25
+    },
+    {
+      "actionType": "PRICE_CHANGE_MAJOR",
+      "count": 12
+    }
+  ],
+  "topUsers": [
+    {
+      "userId": 2,
+      "userName": "Cashier 1",
+      "activityCount": 420
+    },
+    {
+      "userId": 3,
+      "userName": "Cashier 2",
+      "activityCount": 385
+    },
+    {
+      "userId": 1,
+      "userName": "Manager",
+      "activityCount": 245
+    }
+  ]
+}
+```
+
+## Activity types
+
+The system tracks these action types:
+
+### Product activities
+
+- `CREATE` - Product created
+- `UPDATE` - Product updated
+- `DELETE` - Product deleted
+- `PRICE_CHANGE_MAJOR` - Significant price change (>20%)
+
+### Employee activities
+
+- `CREATE` - Employee account created
+- `UPDATE` - Employee details updated
+- `ACTIVATE` - Employee account activated
+- `DEACTIVATE` - Employee account deactivated
+- `PIN_RESET` - Employee PIN reset
+
+### Sales activities
+
+- `SALE` - Sale transaction processed
+
+### Returns activities
+
+- `CREATE` - Return processed
+
+### Inventory activities
+
+- `CREATE` - Inventory count started
+- `COMPLETE` - Inventory count completed
+- `CANCEL` - Inventory count cancelled
+- `DISCREPANCY` - Significant inventory discrepancy found
+
+### Stock adjustment activities
+
+- `CREATE` - Stock adjustment created
+- `APPROVE` - Stock adjustment approved
+
+### Settings activities
+
+- `UPDATE` - Settings updated
+- `CREATE` - Initial settings created
+
+## Use cases
+
+### Security audit
+
+Track all user actions for security and compliance:
+
+```bash
+curl -X GET "https://api.example.com/api/useractivity?userId=1&actionType=DELETE" \
+  -H "Content-Type: application/json"
+```
+
+### Price change review
+
+Monitor significant price changes:
+
+```bash
+curl -X GET "https://api.example.com/api/useractivity?actionType=PRICE_CHANGE_MAJOR" \
+  -H "Content-Type: application/json"
+```
+
+### Employee activity report
+
+Generate activity report for a specific employee:
+
+```bash
+curl -X GET "https://api.example.com/api/useractivity?userId=2&startDate=2024-02-01T00:00:00Z&endDate=2024-02-28T23:59:59Z" \
+  -H "Content-Type: application/json"
+```
+
+### Inventory discrepancy tracking
+
+Find all inventory discrepancies:
+
+```bash
+curl -X GET "https://api.example.com/api/useractivity?actionType=DISCREPANCY" \
+  -H "Content-Type: application/json"
+```

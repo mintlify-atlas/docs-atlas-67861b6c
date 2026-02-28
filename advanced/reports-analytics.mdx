@@ -1,0 +1,272 @@
+---
+title: Reports and analytics
+description: Access sales reports, performance metrics, and business analytics
+---
+
+The BMS POS system provides comprehensive reporting and analytics features to help you understand your business performance.
+
+## Available reports
+
+The Reports component (Reports.tsx) provides multiple report types:
+
+### Sales summary reports
+
+- **Today's performance**: Real-time sales data for the current day
+- **Weekly summary**: Sales performance for the current week
+- **Monthly summary**: Sales performance for the current month
+
+### Product reports
+
+- **Top selling products**: Best-performing products by quantity and revenue
+- **Product performance**: Detailed sales metrics by product
+
+### Financial reports
+
+- **Payment method breakdown**: Sales distribution by payment type
+- **Tax summary**: Tax collection and rates
+- **Revenue analysis**: Detailed revenue breakdowns
+
+### Employee reports
+
+- **Employee performance**: Individual sales performance metrics
+- **Transaction analysis**: Employee transaction statistics
+
+## Accessing reports
+
+To view reports:
+
+<Steps>
+  <Step title="Log in as manager">
+    Reports are only accessible to users with Manager role.
+  </Step>
+  
+  <Step title="Navigate to reports">
+    From the Manager dashboard, select **Sales Reports**.
+  </Step>
+  
+  <Step title="View report data">
+    All reports load automatically when the page opens.
+  </Step>
+  
+  <Step title="Export data">
+    Click **Export CSV** to download report data for external analysis.
+  </Step>
+</Steps>
+
+## Today's performance report
+
+The daily summary displays:
+
+- **Total sales**: Number of completed transactions
+- **Revenue**: Total sales amount before tax
+- **Tax collected**: Total tax amount collected
+- **Discounts given**: Total value of discounts applied
+
+This data updates in real-time throughout the day.
+
+## Weekly and monthly summaries
+
+<Tabs>
+  <Tab title="This week">
+    View sales data for the current week including:
+    - Total sales count
+    - Total revenue
+    - Tax collected
+    - Discounts given
+    - Date range covered
+  </Tab>
+  
+  <Tab title="This month">
+    View sales data for the current month including:
+    - Total sales count
+    - Total revenue
+    - Tax collected
+    - Discounts given
+    - Date range covered
+  </Tab>
+</Tabs>
+
+## Top selling products
+
+Analyze your best-performing products:
+
+### Time range selection
+
+Choose from:
+- Last 7 days
+- Last 30 days
+- Last 90 days
+
+### Metrics displayed
+
+For each product:
+- **Rank**: Position in top sellers list
+- **Product name**: Name of the product
+- **Quantity sold**: Total units sold
+- **Revenue**: Total sales amount
+- **Transaction count**: Number of transactions including this product
+
+### Using the data
+
+- Identify best-selling products for restocking priority
+- Spot trends in customer preferences
+- Plan inventory based on sales velocity
+- Focus marketing on top performers
+
+## Payment method breakdown
+
+Understand how customers pay:
+
+### Payment metrics
+
+- **Payment method**: Cash, Credit Card, Debit Card, etc.
+- **Transaction count**: Number of sales using this method
+- **Total revenue**: Amount collected via this method
+
+### Analysis uses
+
+- Monitor cash handling requirements
+- Track credit card processing fees
+- Identify preferred payment methods
+- Plan for payment system needs
+
+## Tax summary report
+
+Track tax collection and compliance:
+
+### Tax metrics
+
+- **Total tax collected**: Sum of all tax amounts
+- **Average tax rate**: Weighted average tax rate across sales
+- **Taxable revenue**: Total revenue subject to tax
+- **Sales count**: Number of taxable transactions
+
+### Reporting period
+
+Tax summaries show data for the current month by default.
+
+## Employee performance report
+
+Monitor individual employee sales performance:
+
+### Performance metrics
+
+For each employee:
+- **Employee name**: Staff member's name
+- **Total sales**: Number of transactions processed
+- **Total revenue**: Amount of sales completed
+- **Average transaction value**: Revenue divided by sales count
+
+### Uses for management
+
+- Identify top performers
+- Track individual productivity
+- Set performance goals
+- Recognize employee achievements
+- Identify training opportunities
+
+## Exporting reports
+
+All report data can be exported to CSV format:
+
+<Steps>
+  <Step title="Click Export CSV">
+    Located in the top-right corner of the reports page.
+  </Step>
+  
+  <Step title="File is generated">
+    The system creates a CSV file containing all report data.
+  </Step>
+  
+  <Step title="Download automatically">
+    The file downloads with a timestamp in the filename: `sales-report-YYYYMMDD.csv`
+  </Step>
+  
+  <Step title="Open in spreadsheet software">
+    Use Excel, Google Sheets, or similar software to analyze the data.
+  </Step>
+</Steps>
+
+### CSV export contents
+
+The exported file includes:
+
+- Sales summary data (today, week, month)
+- Payment method breakdown
+- Tax summary information
+- Employee performance metrics
+- Top products list
+
+## Report API endpoints
+
+Reports are generated from these API endpoints (Reports.tsx:71-138):
+
+```javascript
+// Sales summaries
+GET /sales/today
+GET /sales/this-week
+GET /sales/this-month
+
+// Product analysis
+GET /sales/top-products?days=7
+GET /sales/top-products?days=30
+GET /sales/top-products?days=90
+
+// Financial reports
+GET /sales/payment-breakdown?period=month
+GET /sales/tax-summary?period=month
+
+// Employee metrics
+GET /sales/employee-performance?period=month
+```
+
+## Report refresh
+
+All reports automatically load when you access the Reports page. To refresh data:
+
+1. Navigate away from the Reports page
+2. Return to the Reports page to reload all data
+
+Alternatively, refresh your browser to reload all report data.
+
+## Best practices for using reports
+
+### Daily review
+
+- Check today's performance regularly
+- Monitor employee performance
+- Track payment method usage
+- Identify any unusual patterns
+
+### Weekly analysis
+
+- Review weekly sales trends
+- Compare to previous weeks
+- Analyze top-selling products
+- Plan inventory for coming week
+
+### Monthly review
+
+- Analyze monthly performance metrics
+- Review employee performance
+- Reconcile tax collection
+- Export data for accounting
+- Compare to previous months
+- Plan for upcoming month
+
+### Using exported data
+
+- Create custom charts and graphs
+- Perform trend analysis
+- Share with stakeholders
+- Archive for historical records
+- Integrate with accounting software
+
+## Report security
+
+Access to reports is restricted:
+
+- Only **Manager** role can access reports
+- Session validation required
+- Activity logged for audit purposes
+- Data cannot be modified from reports interface

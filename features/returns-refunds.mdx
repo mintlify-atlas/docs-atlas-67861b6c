@@ -1,0 +1,590 @@
+---
+title: Returns and refunds
+description: Process customer returns with manager approval, restocking workflow, and refund tracking
+---
+
+## Overview
+
+The returns and refunds system allows managers to process customer returns for previously completed sales. The system validates return eligibility, tracks return reasons and conditions, optionally restocks inventory, and maintains complete audit trails.
+
+<CardGroup cols={2}>
+  <Card title="Transaction lookup" icon="magnifying-glass">
+    Search by receipt barcode or last 8 digits of transaction ID
+  </Card>
+  <Card title="Manager approval" icon="user-check">
+    Optional PIN authorization for returns over configured threshold
+  </Card>
+  <Card title="Automatic restocking" icon="rotate">
+    Good condition items automatically added back to inventory
+  </Card>
+  <Card title="Return reasons" icon="clipboard-list">
+    Track why items are returned with customizable reason codes
+  </Card>
+</CardGroup>
+
+## Return policies
+
+The returns system is highly configurable via System Settings:
+
+| Setting | Description | Default |
+|---------|-------------|----------|
+| **Enable Returns** | Master switch for returns functionality | `false` |
+| **Require Receipt** | Customer must have original receipt | `true` |
+| **Return Time Limit** | Days from sale date returns are accepted | `30` days |
+| **Manager Approval** | All returns require manager PIN | `true` |
+| **Approval Amount** | Returns over this amount require approval | `$50.00` |
+| **Restock Items** | Good condition items added back to inventory | `true` |
+| **Allow Defective Returns** | Accept damaged/defective items | `true` |
+
+<Warning>
+  The returns system is disabled by default. Enable it in System Settings → Returns Configuration before processing returns.
+</Warning>
+
+## Processing returns
+
+<Steps>
+  <Step title="Access returns screen">
+    From Manager dashboard, click "Returns & Refunds". Only managers and authorized users can access this screen.
+  </Step>
+  
+  <Step title="Find original transaction">
+    Enter the transaction ID from the customer's receipt:
+    
+    **Option 1**: Scan the barcode on the receipt (full transaction ID)
+    
+    **Option 2**: Type the last 8 digits from the receipt
+    
+    Example receipt shows: `Transaction: ...12345678`
+    
+    Click "Find Transaction" to search.
+  </Step>
+  
+  <Step title="Verify transaction eligibility">
+    The system checks:
+    
+    - Transaction exists in database
+    - Sale date is within return time limit
+    - Transaction hasn't been fully returned already
+    
+    If eligible, original transaction details are displayed:
+    - Transaction ID (last 8 digits)
+    - Sale date and time
+    - Original cashier name
+    - Original total amount
+    - List of purchased items
+  </Step>
+  
+  <Step title="Select items to return">
+    For each item in the original sale:
+    
+    - **Return Qty**: Enter quantity to return (max = original quantity)
+    - **Condition**: Select "Good" or "Defective" (if enabled)
+    - **Reason**: Choose from configured return reasons
+    
+    The system calculates refund amount in real-time:
+    ```
+    refundAmount = returnQuantity × originalUnitPrice
+    ```
+  </Step>
+  
+  <Step title="Review refund summary">
+    The green summary box shows:
+    
+    - Total refund amount
+    - Number of items selected
+    - Manager approval requirement (if applicable)
+  </Step>
+  
+  <Step title="Enter manager PIN (if required)">
+    If manager approval is needed:
+    
+    - Modal prompts for manager PIN
+    - Enter 6-digit manager PIN
+    - Click "Approve Return"
+    - Invalid PIN rejects the return
+  </Step>
+  
+  <Step title="Complete return">
+    Click "Process Return" to finalize. The system:
+    
+    - Validates all return items have reasons
+    - Verifies manager approval if required
+    - Creates return record with unique Return ID
+    - Restocks good condition items (if enabled)
+    - Logs complete return details
+    - Displays success confirmation with Return ID
+  </Step>
+  
+  <Step title="Issue refund to customer">
+    The system displays total refund amount. Process the refund using your store's payment system (cash, card reversal, store credit, etc.).
+    
+    <Note>
+      The BMS POS system tracks returns but does not integrate with payment processors for automatic refunds. Refund processing must be done separately.
+    </Note>
+  </Step>
+</Steps>
+
+## Transaction search
+
+### Search by last 8 digits
+
+Receipts display the last 8 characters of the transaction ID:
+
+```
+Transaction ID: TXN-20260228-A1B2C3D4
+Receipt shows: ...A1B2C3D4
+Customer enters: A1B2C3D4
+```
+
+**Search logic**:
+```javascript
+const foundSale = allSales.find(sale => {
+  // Try full ID match
+  if (sale.transactionId === searchTerm) return true
+  
+  // Try last 8 digits match
+  const last8 = sale.transactionId.slice(-8)
+  return last8 === searchTerm
+})
+```
+
+### Search by barcode
+
+If receipts include a barcode of the full transaction ID, scanning the barcode performs an exact match search.
+
+### Transaction not found
+
+If no matching transaction:
+
+```
+Transaction ID ending in "12345678" not found
+```
+
+**Common reasons**:
+- Typo in entered digits
+- Transaction ID from different store/system
+- Receipt is from before system deployment
+- Transaction was voided or cancelled
+
+## Return eligibility checks
+
+### Time limit validation
+
+If return time limit is configured:
+
+```javascript
+const daysSinceSale = Math.floor((Date.now() - saleDate.getTime()) / (1000 * 60 * 60 * 24))
+
+if (daysSinceSale > returnTimeLimitDays) {
+  alert(`This transaction is ${daysSinceSale} days old. Returns allowed within ${returnTimeLimitDays} days.`)
+  return
+}
+```
+
+**Example**: 30-day return policy
+- Sale date: January 15, 2026
+- Today: February 28, 2026
+- Days since sale: 44 days
+- Result: **Return rejected** (exceeds 30-day limit)
+
+### Duplicate return check
+
+The system prevents returning the same items multiple times:
+
+```javascript
+const existingReturn = existingReturns.find(r => r.originalSaleId === foundSale.id)
+
+if (existingReturn) {
+  const totalReturned = existingReturn.returnItems.reduce((sum, item) => sum + item.returnQuantity, 0)
+  const totalOriginal = foundSale.saleItems.reduce((sum, item) => sum + item.quantity, 0)
+  
+  if (totalReturned >= totalOriginal) {
+    alert(`This transaction has already been returned.\n\nReturn ID: ${existingReturn.returnId}`)
+    return
+  }
+}
+```
+
+**Full return example**:
+```
+This transaction has already been returned.
+
+Return ID: RET-20260228-12345678
+Return Date: February 15, 2026 14:32
+Refund Amount: $45.99
+Processed by: John Smith
+```
+
+**Partial return example**:
+```
+This transaction has been partially returned.
+
+Existing Return ID: RET-20260228-12345678
+Previously Returned: 2 of 5 items
+Refund Amount: $20.00
+```
+
+The system allows additional returns for remaining items.
+
+## Return items
+
+### Quantity validation
+
+For each item, the system tracks:
+- Original purchase quantity
+- Previously returned quantity
+- Available to return = original - returned
+
+**Validation**:
+```javascript
+if (returnQuantity > availableToReturn) {
+  alert(`Cannot return ${returnQuantity} of ${productName}. ` +
+        `Only ${availableToReturn} available to return ` +
+        `(originally bought ${originalQuantity}, already returned ${alreadyReturned}).`)
+}
+```
+
+**Example**:
+- Customer bought 5 bottles of water
+- Previously returned 2 bottles
+- Attempting to return 4 more bottles
+- Result: **Rejected** - only 3 bottles available to return
+
+### Item condition
+
+If "Allow Defective Item Returns" is enabled:
+
+- **Good** - Item is resaleable, will be restocked
+- **Defective** - Item is damaged, will NOT be restocked
+
+If disabled, all returns are assumed "Good" condition.
+
+### Return reasons
+
+Configured in System Settings → Return Reasons (comma-separated):
+
+```
+Changed mind, Wrong item, Defective, Expired, Better price elsewhere, Customer request
+```
+
+**Required**: All return items must have a reason selected before processing.
+
+## Manager approval
+
+### When approval is required
+
+Manager PIN is required if:
+
+```javascript
+const needsApproval = (
+  systemSettings.requireManagerApprovalForReturns ||
+  (systemSettings.returnManagerApprovalAmount > 0 && returnTotal > systemSettings.returnManagerApprovalAmount)
+)
+```
+
+**Example scenarios**:
+
+| Setting | Return Amount | Needs Approval |
+|---------|--------------|----------------|
+| Require Approval = true | Any amount | Yes |
+| Require Approval = false, Threshold = $50 | $35.00 | No |
+| Require Approval = false, Threshold = $50 | $75.00 | Yes |
+| Require Approval = true, Threshold = $50 | $25.00 | Yes |
+
+### PIN validation
+
+**Manager PIN check**:
+```csharp
+var manager = await _context.Employees
+    .FirstOrDefaultAsync(e => e.Pin == hashedManagerPin && 
+                            (e.Role == "Manager" || e.IsManager == true))
+
+if (manager == null) {
+    return BadRequest("Invalid manager PIN. Please verify the PIN and try again.")
+}
+```
+
+**Security notes**:
+- Only employees with Role = "Manager" can approve
+- PIN must match exactly (hashed comparison)
+- Failed PIN attempts are not logged (consider adding for security)
+- No rate limiting on PIN attempts (consider adding)
+
+## Inventory restocking
+
+### Automatic restocking
+
+If "Restock Returned Items" is enabled:
+
+```csharp
+if (systemSettings.RestockReturnedItems && item.Condition == "good") {
+    var product = await _context.Products.FindAsync(originalSaleItem.ProductId)
+    if (product != null) {
+        product.StockQuantity += item.ReturnQuantity
+        returnItem.RestockedToInventory = true
+    }
+}
+```
+
+**Example**:
+- Customer returns 3 bottles of Coca-Cola (good condition)
+- Current stock: 15 bottles
+- After return: 18 bottles
+- Restock flag: `true`
+
+**No restocking if**:
+- Item condition is "Defective"
+- Restock setting is disabled
+- Product no longer exists in catalog
+
+### Restocking workflow
+
+For defective items or when restocking is disabled:
+
+1. Return is processed normally
+2. `RestockedToInventory` flag = `false`
+3. Manager manually inspects items
+4. If resaleable, manually adjust stock in Inventory Management
+5. If not resaleable, dispose of items and record waste
+
+## Return records
+
+### Return ID format
+
+```javascript
+const returnId = `RET-${timestamp}-${randomHex}`
+```
+
+Example: `RET-20260228-A1B2C3D4`
+
+- **RET** - Return identifier prefix
+- **20260228** - Date (YYYYMMDD)
+- **A1B2C3D4** - Random 8-character hex
+
+### Return data structure
+
+```json
+{
+  "id": 789,
+  "returnId": "RET-20260228-A1B2C3D4",
+  "originalSaleId": 456,
+  "returnDate": "2026-02-28T15:45:00Z",
+  "status": "Completed",
+  "totalRefundAmount": 45.99,
+  "processedByEmployeeId": 123,
+  "approvedByEmployeeId": 124,
+  "managerApprovalRequired": true,
+  "notes": "Return processed on Feb 28, 2026 3:45 PM",
+  "returnItems": [
+    {
+      "originalSaleItemId": 789,
+      "productId": 101,
+      "productName": "Coca-Cola 500ml",
+      "returnQuantity": 3,
+      "unitPrice": 1.50,
+      "lineTotal": 4.50,
+      "condition": "good",
+      "reason": "Changed mind",
+      "restockedToInventory": true
+    }
+  ]
+}
+```
+
+## API endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|----------|
+| `/api/sales` | GET | Search for original transaction |
+| `/api/returns` | GET | List all returns |
+| `/api/returns/{id}` | GET | Get single return details |
+| `/api/returns` | POST | Process new return |
+| `/api/system-settings` | GET | Load return policy configuration |
+
+### Process return request
+
+**Endpoint**: `POST /api/returns`
+
+```json
+{
+  "originalSaleId": 456,
+  "processedByEmployeeId": 123,
+  "managerPin": "654321",
+  "notes": "Return processed on Feb 28, 2026 3:45 PM",
+  "returnItems": [
+    {
+      "originalSaleItemId": 789,
+      "returnQuantity": 3,
+      "lineTotal": 4.50,
+      "condition": "good",
+      "reason": "Changed mind"
+    }
+  ]
+}
+```
+
+**Response**: Complete return record with `returnId`
+
+## User activity logging
+
+All returns are logged with full details:
+
+```json
+{
+  "action": "Processed return RET-20260228-A1B2C3D4: 3x Coca-Cola 500ml",
+  "details": "Original Sale: TXN-20260215-12345678, Total Refund: $4.50, Items: 1, Manager Approval: Jane Smith",
+  "entityType": "Return",
+  "entityId": 789,
+  "actionType": "CREATE"
+}
+```
+
+**Includes**:
+- Return ID
+- Original transaction ID
+- Items returned (quantity and names)
+- Total refund amount
+- Manager who approved (if applicable)
+- Employee who processed
+
+## Return reports
+
+### Returns by date range
+
+```sql
+SELECT * FROM Returns
+WHERE ReturnDate BETWEEN @startDate AND @endDate
+ORDER BY ReturnDate DESC
+```
+
+### Returns by reason
+
+```sql
+SELECT 
+  Reason,
+  COUNT(*) as ReturnCount,
+  SUM(LineTotal) as TotalRefunded
+FROM ReturnItems
+GROUP BY Reason
+ORDER BY ReturnCount DESC
+```
+
+### Products most frequently returned
+
+```sql
+SELECT 
+  ProductName,
+  SUM(ReturnQuantity) as TotalReturned,
+  SUM(LineTotal) as TotalRefunded,
+  COUNT(DISTINCT ReturnId) as ReturnTransactions
+FROM ReturnItems
+GROUP BY ProductId, ProductName
+ORDER BY TotalReturned DESC
+```
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="For managers">
+    - Verify customer has original receipt before processing
+    - Check photo ID for high-value returns
+    - Inspect returned items for condition before selecting "Good"
+    - Ask customer for return reason - don't guess
+    - Keep manager PIN secure - don't share with cashiers
+    - Review return reports weekly to identify trends
+    - Investigate employees with unusually high return rates
+  </Accordion>
+  
+  <Accordion title="For store owners">
+    - Set return time limit based on product types (food vs. electronics)
+    - Configure manager approval threshold to balance security and convenience
+    - Regularly review return reasons to identify product issues
+    - Disable defective returns if you want to inspect all items manually
+    - Enable automatic restocking only if you trust condition assessments
+    - Create clear return policy signage based on system settings
+  </Accordion>
+  
+  <Accordion title="For system administrators">
+    - Back up return records - they're important for accounting
+    - Test return time limit calculation with your local timezone
+    - Verify inventory restocking is working correctly after returns
+    - Monitor for duplicate returns (same transaction returned twice)
+    - Set up email alerts for high-value returns
+    - Regularly audit return records against physical inventory counts
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Returns system not accessible">
+    **Symptoms**: Returns menu item missing or disabled
+    
+    **Solutions**:
+    - Check System Settings → Enable Returns is turned on
+    - Verify logged-in user has Manager role
+    - Refresh browser cache after enabling returns
+    - Check browser console for JavaScript errors
+  </Accordion>
+  
+  <Accordion title="Transaction not found">
+    **Symptoms**: "Transaction ID not found" error
+    
+    **Solutions**:
+    - Verify correct last 8 digits from receipt
+    - Try scanning receipt barcode instead of typing
+    - Check transaction exists: Manager → Sales History
+    - Confirm receipt is from this store/system
+    - Ensure transaction was completed (not voided)
+  </Accordion>
+  
+  <Accordion title="Return period expired error">
+    **Symptoms**: "Return period expired. Returns allowed within X days."
+    
+    **Solutions**:
+    - Verify receipt date is within policy window
+    - Check System Settings → Return Time Limit Days
+    - Consider policy exception for loyal customers (manual override not implemented)
+    - Adjust return time limit if too restrictive
+  </Accordion>
+  
+  <Accordion title="Manager PIN rejected">
+    **Symptoms**: "Invalid manager PIN" when approving return
+    
+    **Solutions**:
+    - Verify PIN belongs to active Manager account
+    - Check PIN is exactly 6 digits
+    - Test manager login to verify PIN works
+    - Use Reset PIN in Employee Management if forgotten
+    - Ensure manager account is not deactivated
+  </Accordion>
+  
+  <Accordion title="Items not restocking after return">
+    **Symptoms**: Stock quantity unchanged after good condition return
+    
+    **Solutions**:
+    - Check System Settings → Restock Returned Items is enabled
+    - Verify item condition was marked "Good" (not "Defective")
+    - Confirm product still exists in inventory
+    - Check return record `RestockedToInventory` flag in database
+    - Look for errors in API logs during return processing
+  </Accordion>
+  
+  <Accordion title="Cannot return full quantity">
+    **Symptoms**: "Only X available to return" when trying to return all items
+    
+    **Solutions**:
+    - Check if transaction has existing partial returns
+    - Verify correct transaction selected (not similar transaction)
+    - Review return history for this transaction ID
+    - Check database for orphaned return records
+    - Contact support if data inconsistency detected
+  </Accordion>
+</AccordionGroup>
+
+## Related documentation
+
+- [Sales processing](/features/sales-processing) - Original transaction workflow
+- [Employee management](/features/employee-management) - Manager PIN setup
+- [System settings](/configuration/system-settings) - Return policy configuration
+- [User activity](/api/user-activity) - Return audit trail

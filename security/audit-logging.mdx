@@ -1,0 +1,502 @@
+---
+title: Audit logging
+description: Track user activity and maintain security audit trails in BMS POS
+---
+
+BMS POS includes comprehensive audit logging to track user actions, security events, and system changes for compliance and security monitoring.
+
+## Audit trail overview
+
+The audit logging system records all significant user activities and system events in the `UserActivity` table.
+
+### Logged information
+
+Each audit log entry captures:
+
+- **User identification** - User ID and username
+- **Action description** - Human-readable description of the action
+- **Timestamp** - UTC timestamp of when the action occurred
+- **Action type** - Category of action (LOGIN, CREATE, UPDATE, DELETE, etc.)
+- **Entity details** - Type and ID of affected entity
+- **IP address** - Source IP address of the request
+- **Additional details** - Context-specific information
+
+```csharp UserActivity.cs:6-40
+public class UserActivity
+{
+    [Key]
+    public int Id { get; set; }
+    
+    public int? UserId { get; set; }
+    
+    [Required]
+    [MaxLength(100)]
+    public string UserName { get; set; } = string.Empty;
+    
+    [Required]
+    [MaxLength(200)]
+    public string Action { get; set; } = string.Empty;
+    
+    public string? Details { get; set; }
+    
+    [MaxLength(45)]
+    public string? IPAddress { get; set; }
+    
+    [Required]
+    public DateTime Timestamp { get; set; }
+    
+    [MaxLength(50)]
+    public string? EntityType { get; set; }
+    
+    public int? EntityId { get; set; }
+    
+    [MaxLength(20)]
+    public string? ActionType { get; set; } // CREATE, UPDATE, DELETE, VIEW, LOGIN, etc.
+    
+    // Navigation properties
+    [ForeignKey("UserId")]
+    public virtual Employee? User { get; set; }
+}
+```
+
+## Activity logging service
+
+The `UserActivityService` provides methods for recording and retrieving audit logs.
+
+### Logging an activity
+
+Activities are logged asynchronously to avoid impacting performance:
+
+```csharp UserActivityService.cs:24-54
+public async Task LogActivityAsync(int? userId, string userName, string action, string? details = null, 
+    string? entityType = null, int? entityId = null, string? actionType = null, string? ipAddress = null)
+{
+    try
+    {
+        // Create a separate scope for activity logging to avoid threading conflicts
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<BmsPosDbContext>();
+        
+        var activity = new UserActivity
+        {
+            UserId = userId,
+            UserName = userName,
+            Action = action,
+            Details = details,
+            EntityType = entityType,
+            EntityId = entityId,
+            ActionType = actionType,
+            IPAddress = ipAddress,
+            Timestamp = DateTime.UtcNow
+        };
+
+        context.UserActivities.Add(activity);
+        await context.SaveChangesAsync();
+    }
+    catch (Exception ex)
+    {
+        // Log the error but don't throw - we don't want activity logging to break business operations
+        Console.WriteLine($"Failed to log user activity: {ex.Message}");
+    }
+}
+```
+
+<Note>
+Activity logging failures are handled gracefully and don't interrupt business operations. Errors are logged to the console for monitoring.
+</Note>
+
+### Retrieving activities
+
+The service provides flexible filtering for audit log queries:
+
+```csharp UserActivityService.cs:56-89
+public async Task<List<UserActivity>> GetActivitiesAsync(DateTime? startDate = null, DateTime? endDate = null, 
+    int? userId = null, string? actionType = null, int limit = 1000)
+{
+    // Create a separate scope for read operations
+    using var scope = _serviceProvider.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<BmsPosDbContext>();
+    
+    var query = context.UserActivities.Include(a => a.User).AsQueryable();
+
+    if (startDate.HasValue)
+    {
+        query = query.Where(a => a.Timestamp >= startDate.Value);
+    }
+
+    if (endDate.HasValue)
+    {
+    }
+
+    if (userId.HasValue)
+    {
+        query = query.Where(a => a.UserId == userId.Value);
+    }
+
+    if (!string.IsNullOrEmpty(actionType))
+    {
+        query = query.Where(a => a.ActionType == actionType);
+    }
+
+    return await query
+        .OrderByDescending(a => a.Timestamp)
+        .Take(limit)
+        .ToListAsync();
+}
+```
+
+## Action types
+
+The system categorizes activities into standardized action types for easier filtering and reporting.
+
+### Authentication events
+
+**LOGIN** - Successful user login:
+
+```csharp AuthController.cs:122-132
+// Log successful login
+await _userActivityService.LogActivityAsync(
+    employee.Id,
+    employee.Name ?? employee.EmployeeId,
+    $"User logged in successfully",
+    $"Role: {employee.Role}, Manager: {employee.IsManager}",
+    "Employee",
+    employee.Id,
+    "LOGIN",
+    HttpContext.Connection?.RemoteIpAddress?.ToString()
+);
+```
+
+**LOGIN_FAILED** - Failed login attempt:
+
+```csharp AuthController.cs:243-267
+private async Task LogFailedLoginAttempt(string employeeId, string reason, int? employeeDbId)
+{
+    try
+    {
+        await _userActivityService.LogActivityAsync(
+            null, // No valid user ID for failed attempts
+            employeeId,
+            $"Failed login attempt for employee ID: {employeeId}",
+            reason,
+            "Employee",
+            employeeDbId,
+            "LOGIN_FAILED",
+            HttpContext.Connection?.RemoteIpAddress?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error logging failed login: {ex.Message}");
+        // Don't throw - logging failure shouldn't break authentication
+    }
+}
+```
+
+Failed login reasons include:
+
+- Employee not found
+- Invalid PIN
+- Role mismatch
+- Account inactive
+
+### Data modification events
+
+**CREATE** - New record created
+
+**UPDATE** - Existing record modified
+
+**DELETE** - Record deleted
+
+**VIEW** - Sensitive data accessed
+
+### Transaction events
+
+Transaction-related activities are logged with specific action types:
+
+- Sale completed
+- Transaction voided
+- Refund processed
+- Discount applied
+- Payment received
+
+### Administrative events
+
+System configuration and administrative actions:
+
+- Settings changed
+- Employee created/modified
+- Backup performed
+- Report generated
+
+## REST API endpoints
+
+The `UserActivityController` exposes endpoints for retrieving audit logs.
+
+### Get user activities
+
+Retrieve filtered audit log entries:
+
+```http
+GET /api/useractivity?startDate={date}&endDate={date}&userId={id}&actionType={type}&limit={number}
+```
+
+**Query parameters:**
+
+- `startDate` - Filter activities after this date (optional)
+- `endDate` - Filter activities before this date (optional)
+- `userId` - Filter by specific user ID (optional)
+- `actionType` - Filter by action type (LOGIN, CREATE, etc.) (optional)
+- `limit` - Maximum number of records to return (default: 1000)
+
+```csharp UserActivityController.cs:18-57
+[HttpGet]
+public async Task<ActionResult<UserActivityResponse>> GetUserActivities(
+    [FromQuery] DateTime? startDate = null,
+    [FromQuery] DateTime? endDate = null,
+    [FromQuery] int? userId = null,
+    [FromQuery] string? actionType = null,
+    [FromQuery] int limit = 1000)
+{
+    try
+    {
+        var activities = await _userActivityService.GetActivitiesAsync(
+            startDate, endDate, userId, actionType, limit);
+
+        var response = new UserActivityResponse
+        {
+            Activities = activities.Select(a => new UserActivityDto
+            {
+                Id = a.Id,
+                UserId = a.UserId,
+                UserName = a.UserName,
+                Action = a.Action,
+                Details = a.Details,
+                EntityType = a.EntityType,
+                EntityId = a.EntityId,
+                ActionType = a.ActionType,
+                IPAddress = a.IPAddress,
+                Timestamp = DateTime.SpecifyKind(a.Timestamp, DateTimeKind.Utc)
+            }).ToList(),
+            TotalCount = activities.Count
+        };
+
+        return Ok(response);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest($"Failed to retrieve user activities: {ex.Message}");
+    }
+}
+```
+
+### Get activity summary
+
+Retrieve aggregated statistics about user activities:
+
+```http
+GET /api/useractivity/summary?startDate={date}&endDate={date}
+```
+
+```csharp UserActivityController.cs:59-102
+[HttpGet("summary")]
+public async Task<ActionResult<UserActivitySummaryResponse>> GetActivitySummary(
+    [FromQuery] DateTime? startDate = null,
+    [FromQuery] DateTime? endDate = null)
+{
+    try
+    {
+        var activities = await _userActivityService.GetActivitiesAsync(startDate, endDate);
+
+        var summary = new UserActivitySummaryResponse
+        {
+            TotalActivities = activities.Count,
+            UniqueUsers = activities.Where(a => a.UserId.HasValue)
+                .Select(a => a.UserId).Distinct().Count(),
+            ActivityTypes = activities
+                .GroupBy(a => a.ActionType ?? "Unknown")
+                .Select(g => new ActivityTypeSummary
+                {
+                    ActionType = g.Key,
+                    Count = g.Count()
+                })
+                .OrderByDescending(a => a.Count)
+                .ToList(),
+            TopUsers = activities
+                .Where(a => a.UserId.HasValue)
+                .GroupBy(a => new { a.UserId, a.UserName })
+                .Select(g => new UserActivityCount
+                {
+                    UserId = g.Key.UserId,
+                    UserName = g.Key.UserName,
+                    ActivityCount = g.Count()
+                })
+                .OrderByDescending(u => u.ActivityCount)
+                .Take(10)
+                .ToList()
+        };
+
+        return Ok(summary);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest($"Failed to retrieve activity summary: {ex.Message}");
+    }
+}
+```
+
+The summary includes:
+
+- Total number of activities
+- Count of unique users
+- Breakdown by action type
+- Top 10 most active users
+
+## Security monitoring
+
+Audit logs enable several important security monitoring capabilities.
+
+### Failed login detection
+
+Monitor for patterns of failed login attempts that may indicate:
+
+- Brute force attacks
+- Account compromise attempts
+- Forgotten credentials needing password reset
+- Employee trying to access unauthorized roles
+
+```sql
+-- Example query for failed login attempts
+SELECT UserName, COUNT(*) as FailedAttempts, MAX(Timestamp) as LastAttempt
+FROM UserActivities
+WHERE ActionType = 'LOGIN_FAILED' 
+  AND Timestamp > NOW() - INTERVAL '1 day'
+GROUP BY UserName
+HAVING COUNT(*) > 5
+ORDER BY FailedAttempts DESC;
+```
+
+### Unauthorized access attempts
+
+Role mismatch events indicate users attempting to access privileges they don't have:
+
+```sql
+-- Example query for role mismatch attempts
+SELECT *
+FROM UserActivities
+WHERE ActionType = 'LOGIN_FAILED'
+  AND Details LIKE '%Role mismatch%'
+ORDER BY Timestamp DESC;
+```
+
+<Warning>
+Repeated role mismatch attempts from the same employee may indicate an insider threat or social engineering attempt.
+</Warning>
+
+### Activity timeline reconstruction
+
+Audit logs enable reconstruction of events leading up to security incidents:
+
+```sql
+-- Example query for user's activity timeline
+SELECT Timestamp, ActionType, Action, Details
+FROM UserActivities
+WHERE UserId = 123
+  AND Timestamp BETWEEN '2024-01-01' AND '2024-01-31'
+ORDER BY Timestamp ASC;
+```
+
+## Compliance and reporting
+
+Audit logs support various compliance requirements and business reporting needs.
+
+### Retention policies
+
+Organizations should establish audit log retention policies based on:
+
+- Regulatory requirements (e.g., 7 years for financial records)
+- Storage capacity constraints
+- Business needs for historical analysis
+
+### Audit log archival
+
+For long-term retention:
+
+1. Export audit logs to external storage
+2. Compress archived logs
+3. Maintain searchable index of archived periods
+4. Document archival and retrieval procedures
+
+### Tamper protection
+
+<Note>
+The current implementation stores audit logs in the application database. For enhanced security, consider implementing tamper-evident logging using write-once storage or cryptographic chaining.
+</Note>
+
+Future enhancements planned:
+
+- Write-only log storage
+- Cryptographic hash chaining
+- External SIEM integration
+- Automated anomaly detection
+
+## Best practices
+
+### What to log
+
+**Always log:**
+
+- Authentication events (success and failure)
+- Authorization failures
+- Data modifications to sensitive records
+- Administrative actions
+- System configuration changes
+- Privileged access
+
+**Consider logging:**
+
+- Data access to sensitive records
+- Report generation
+- Export operations
+- Bulk data operations
+
+**Avoid logging:**
+
+- Passwords or PINs (even hashed)
+- Full credit card numbers
+- Excessive detail on high-frequency operations
+
+### Log review procedures
+
+**Daily:**
+
+- Review failed login attempts
+- Check for unusual activity patterns
+- Verify expected system operations
+
+**Weekly:**
+
+- Generate activity summary reports
+- Review privileged access patterns
+- Analyze action type distributions
+
+**Monthly:**
+
+- Comprehensive security audit
+- Long-term trend analysis
+- Compliance reporting
+
+<Warning>
+Audit logs are only useful if regularly reviewed. Establish clear responsibilities for log monitoring and incident response.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/security/authentication">
+    Learn about secure login and PIN management
+  </Card>
+  <Card title="Best practices" icon="shield-check" href="/security/best-practices">
+    Follow security recommendations
+  </Card>
+</CardGroup>

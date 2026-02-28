@@ -1,0 +1,418 @@
+---
+title: Installation
+description: Step-by-step installation instructions for setting up the BMS Point-of-Sale System development environment
+---
+
+# Installation
+
+This guide will walk you through setting up the BMS Point-of-Sale System on your local machine. The installation process takes approximately 10-15 minutes.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+### Required software
+
+<Steps>
+  <Step title="Node.js 18 or higher">
+    Download and install from [nodejs.org](https://nodejs.org/)
+    
+    Verify installation:
+    ```bash
+    node --version
+    npm --version
+    ```
+  </Step>
+  
+  <Step title=".NET 8.0 SDK">
+    Download from [dotnet.microsoft.com](https://dotnet.microsoft.com/download/dotnet/8.0)
+    
+    Verify installation:
+    ```bash
+    dotnet --version
+    ```
+    
+    Expected output: `8.0.x` or higher
+  </Step>
+  
+  <Step title="PostgreSQL 13+ or Supabase account">
+    **Option A - Local PostgreSQL:**
+    - Download from [postgresql.org](https://www.postgresql.org/download/)
+    - Create a database named `bms_pos`
+    
+    **Option B - Supabase (Recommended):**
+    - Create a free account at [supabase.com](https://supabase.com)
+    - Create a new project
+    - Note your connection details from Project Settings → Database
+  </Step>
+</Steps>
+
+### Optional software
+
+- **Git** - For cloning the repository and version control
+- **Code editor** - VS Code, Visual Studio, or your preferred editor
+- **Barcode scanner** - USB or Bluetooth barcode scanner for product scanning
+
+## Installation steps
+
+<Steps>
+  <Step title="Clone the repository">
+    Clone the BMS POS repository to your local machine:
+    
+    ```bash
+    git clone https://github.com/decentaro/BMS-Point-of-Sale-System.git
+    cd BMS-Point-of-Sale-System
+    ```
+    
+    <Note>
+      Replace the repository URL with your fork if you're planning to contribute changes.
+    </Note>
+  </Step>
+  
+  <Step title="Install Node.js dependencies">
+    Install all frontend and Electron dependencies:
+    
+    ```bash
+    npm install
+    ```
+    
+    This installs the following key packages:
+    - **Electron 37.3.0** - Desktop application framework
+    - **React 19.1.1** - UI library
+    - **Vite 7.1.4** - Build tool and dev server
+    - **Tailwind CSS 4.1.12** - Styling framework
+    - **TypeScript 5.9.2** - Type safety
+    
+    Installation typically takes 2-3 minutes depending on your internet connection.
+  </Step>
+  
+  <Step title="Configure environment variables">
+    Create a `.env` file from the provided template:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Edit the `.env` file with your database credentials:
+    
+    ```bash .env
+    # Database Configuration
+    BMS_DB_USER=your_supabase_user
+    BMS_DB_PASSWORD=your_secure_password
+    BMS_DB_SERVER=your_supabase_host.pooler.supabase.com
+    BMS_DB_PORT=5432
+    BMS_DB_NAME=postgres
+    ```
+    
+    <Warning>
+      **Security Note**: Never commit the `.env` file to version control. It's already included in `.gitignore`.
+    </Warning>
+    
+    ### Getting Supabase credentials
+    
+    If you're using Supabase:
+    
+    1. Log in to your Supabase project
+    2. Go to **Project Settings** → **Database**
+    3. Copy the connection details:
+       - Host: Use the **Pooler** connection string for better performance
+       - User: Usually `postgres`
+       - Password: Your database password (set during project creation)
+       - Port: `5432`
+       - Database: `postgres`
+  </Step>
+  
+  <Step title="Verify API configuration">
+    The API connection string is configured in `BMS_POS_API/appsettings.json`:
+    
+    ```json BMS_POS_API/appsettings.json
+    {
+      "ConnectionStrings": {
+        "DefaultConnection": "Host=${BMS_DB_SERVER};Port=${BMS_DB_PORT};Database=${BMS_DB_NAME};Username=${BMS_DB_USER};Password=${BMS_DB_PASSWORD};SSL Mode=Require;Trust Server Certificate=true"
+      }
+    }
+    ```
+    
+    The `${VAR}` placeholders are automatically replaced with values from your `.env` file.
+  </Step>
+  
+  <Step title="Run the development environment">
+    Start all services with a single command:
+    
+    ```bash
+    ./dev.sh
+    ```
+    
+    This script automatically:
+    - Starts the .NET API server on `http://localhost:5002`
+    - Starts the Vite dev server on `http://localhost:3001`
+    - Launches the Electron desktop application
+    - Applies database migrations
+    - Creates the default manager account
+    
+    You should see output similar to:
+    
+    ```
+    === BMS POS Development Started ===
+    Backend API: http://localhost:5002
+    Vite Dev Server: http://localhost:3001
+    Electron Desktop App: Running
+    
+    Hot reload is enabled!
+    Press Ctrl+C to stop all services
+    ```
+  </Step>
+  
+  <Step title="Verify the installation">
+    The Electron application should launch automatically. You'll see the login screen.
+    
+    To verify all services are running correctly:
+    
+    <CodeGroup>
+      ```bash Health check
+      curl http://localhost:5002/health
+      ```
+      
+      ```bash API documentation
+      # Open in browser
+      http://localhost:5002/swagger
+      ```
+      
+      ```bash Vite dev server
+      curl http://localhost:3001
+      ```
+    </CodeGroup>
+    
+    <Tip>
+      The Swagger UI at `/swagger` provides interactive API documentation where you can test all endpoints.
+    </Tip>
+  </Step>
+</Steps>
+
+## Post-installation
+
+### Initial setup
+
+On first run, the system automatically:
+
+1. **Creates database tables** - All required tables are created via Entity Framework migrations
+2. **Enables real-time** - Supabase real-time subscriptions are enabled for live updates
+3. **Seeds default data** - A default manager account is created:
+   - Employee ID: `0001`
+   - PIN: `1234`
+   - Role: Manager
+
+### First login
+
+1. Launch the application (if not already running)
+2. Enter Employee ID: `0001`
+3. Enter PIN: `1234`
+4. Select Role: **Manager**
+5. Click **Sign In**
+
+<Warning>
+  **Important**: Change the default PIN immediately after your first login by going to **Admin Panel** → **Employee Management** → Edit employee → **Reset PIN**.
+</Warning>
+
+## Development workflow
+
+### Available npm scripts
+
+The `package.json` file defines several useful scripts:
+
+<CodeGroup>
+  ```bash Development mode
+  # Start all services (recommended)
+  ./dev.sh
+  
+  # Or start Electron with DevTools
+  npm run dev
+  ```
+  
+  ```bash Production mode
+  # Build React app
+  npm run build-react
+  
+  # Run built application
+  npm start
+  
+  # Package Electron application
+  npm run build
+  ```
+  
+  ```bash Multi-display support
+  # Launch on specific display
+  npm run display0  # Primary display
+  npm run display1  # Secondary display
+  npm run display2  # Tertiary display
+  npm run dev-touch # Touch-enabled display
+  ```
+  
+  ```bash Vite dev server only
+  # Start Vite without Electron
+  npm run dev-vite
+  ```
+</CodeGroup>
+
+### API-only development
+
+If you only need to run the backend API:
+
+```bash
+cd BMS_POS_API
+dotnet run --urls="http://localhost:5002"
+```
+
+Access Swagger documentation at: `http://localhost:5002/swagger`
+
+## Directory structure
+
+After installation, your project structure will look like this:
+
+```
+BMS-Point-of-Sale-System/
+├── src/
+│   ├── frontend/              # React + TypeScript application
+│   │   ├── components/        # UI components
+│   │   ├── contexts/          # React Context providers
+│   │   ├── utils/             # API client & helpers
+│   │   └── App.tsx            # Main application routing
+│   │
+│   └── electron/              # Electron main process
+│       ├── main.js            # Application entry point
+│       └── preload.js         # IPC bridge
+│
+├── BMS_POS_API/               # .NET Core REST API
+│   ├── Controllers/           # API endpoints
+│   ├── Models/                # Database entities
+│   ├── Services/              # Business logic
+│   ├── Middleware/            # Logging & error handling
+│   ├── Migrations/            # EF Core migrations
+│   └── Program.cs             # API configuration
+│
+├── scripts/
+│   └── dev.sh                 # Development startup script
+│
+├── .env                       # Environment variables (you create this)
+├── .env.example               # Template for .env
+├── package.json               # Node.js dependencies
+└── dev.sh                     # Convenience wrapper for scripts/dev.sh
+```
+
+## Troubleshooting
+
+### Port already in use
+
+If you see errors about ports 5002 or 3001 being in use:
+
+```bash
+# Kill processes on port 5002 (API)
+fuser -k 5002/tcp
+
+# Kill processes on port 3001 (Vite)
+fuser -k 3001/tcp
+
+# Or use the dev.sh script which handles cleanup automatically
+./dev.sh
+```
+
+### Database connection failed
+
+If the API fails to connect to the database:
+
+1. **Verify credentials** in your `.env` file
+2. **Check Supabase status** - Ensure your project is running
+3. **Test connection** manually:
+
+```bash
+# Install PostgreSQL client if needed
+sudo apt install postgresql-client  # Linux
+brew install postgresql              # macOS
+
+# Test connection
+psql -h your_supabase_host.pooler.supabase.com \
+     -U your_user \
+     -d postgres \
+     -p 5432
+```
+
+4. **Check logs** for detailed error messages:
+
+```bash
+ls -la BMS_POS_API/logs/
+cat BMS_POS_API/logs/comprehensive-*.json | grep ERROR
+```
+
+### Migration errors
+
+If database migrations fail:
+
+```bash
+cd BMS_POS_API
+
+# List migrations
+dotnet ef migrations list
+
+# Apply migrations manually
+dotnet ef database update
+
+# Or reset database (⚠️ destroys all data)
+dotnet ef database drop
+dotnet ef database update
+```
+
+### Electron won't start
+
+If the Electron application doesn't launch:
+
+1. **Check Vite dev server** is running on port 3001:
+   ```bash
+   curl http://localhost:3001
+   ```
+
+2. **Check API server** is running on port 5002:
+   ```bash
+   curl http://localhost:5002/health
+   ```
+
+3. **Run Electron manually** with debug output:
+   ```bash
+   npm run start
+   ```
+
+### Frontend connection issues
+
+If the frontend can't connect to the API:
+
+1. **Verify API URL** in frontend configuration
+2. **Check CORS settings** in `BMS_POS_API/Program.cs`:
+   ```csharp
+   app.UseCors("ElectronPolicy");
+   ```
+
+3. **Test API endpoint** directly:
+   ```bash
+   curl http://localhost:5002/api/tax-settings
+   ```
+
+## Next steps
+
+Now that you have BMS POS installed and running, proceed to the [quickstart guide](/quickstart) to complete your first sale transaction.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart guide" icon="bolt" href="/quickstart">
+    Complete your first sale in under 5 minutes
+  </Card>
+  
+  <Card title="System architecture" icon="diagram-project" href="/architecture">
+    Understand how all the components work together
+  </Card>
+  
+  <Card title="API reference" icon="code" href="/api-reference">
+    Explore the REST API endpoints
+  </Card>
+  
+  <Card title="Development guide" icon="code-branch" href="/development">
+    Learn how to extend and customize the system
+  </Card>
+</CardGroup>

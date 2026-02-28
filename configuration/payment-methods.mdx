@@ -1,0 +1,292 @@
+---
+title: Payment methods
+description: Configure available payment options including Cash, Card, and ETF/Digital
+---
+
+Payment methods determine which payment options are available during checkout. Configure accepted payment types, set defaults, and use quick presets for common configurations.
+
+## Overview
+
+BMS POS supports three primary payment method categories:
+
+- **Cash** - Physical currency payments
+- **Card** - Credit and debit card payments
+- **ETF/Digital** - Electronic fund transfers and digital wallets
+
+You can enable any combination of these methods based on your business needs and available payment processing infrastructure.
+
+## Configuring payment methods
+
+Navigate to **Manager Dashboard** → **System Settings** → **Payment Methods** to configure payment options.
+
+<ParamField path="availablePaymentMethods" type="string" default="Cash,Card,ETF/Digital">
+  Comma-separated list of enabled payment methods
+  
+  **Format:** Enter payment methods separated by commas, exactly as you want them to appear in the POS interface.
+  
+  Examples:
+  - `Cash,Card,ETF/Digital` - All methods enabled
+  - `Cash` - Cash only
+  - `Card,ETF/Digital` - Cashless only
+  - `Cash,Card` - Traditional methods only
+</ParamField>
+
+<ParamField path="defaultPaymentMethod" type="string" default="Cash">
+  Payment method selected by default at checkout
+  
+  Must be one of the available payment methods configured above. This method is pre-selected when the cashier navigates to the payment screen, saving time for the most common payment type.
+</ParamField>
+
+<Note>
+  The default payment method must exist in the available payment methods list. If you remove the default method, remember to set a new default.
+</Note>
+
+## Quick preset configurations
+
+Use preset buttons to quickly configure common payment method combinations:
+
+### Standard (all methods)
+
+```
+Cash,Card,ETF/Digital
+```
+
+Best for:
+- General retail stores
+- Businesses with full payment processing capabilities
+- Maximum customer convenience
+
+### Cash only
+
+```
+Cash
+```
+
+Best for:
+- Small businesses without card processing
+- Temporary or mobile setups
+- Businesses in cash-preferred markets
+
+<Warning>
+  Cash-only businesses may limit customer convenience. Consider offering digital payment options to accommodate customer preferences.
+</Warning>
+
+### Digital only (cashless)
+
+```
+Card,ETF/Digital
+```
+
+Best for:
+- Modern retail environments
+- Reducing cash handling overhead
+- Enhanced security and transaction tracking
+
+## Payment method details
+
+### Cash payments
+
+**Features:**
+- Manual change calculation
+- Cash drawer integration
+- Denominations tracking
+- End-of-day cash counting
+
+**Configuration:**
+- No additional setup required
+- Works immediately when enabled
+
+**Best for:**
+- Small transactions
+- Customers without cards
+- Backup payment option
+
+### Card payments
+
+**Features:**
+- Credit card processing
+- Debit card processing
+- Card reader integration
+- Digital receipts
+
+**Configuration:**
+- Requires card reader hardware
+- Payment processor integration
+- Merchant account setup
+
+**Best for:**
+- Medium to large transactions
+- Customer convenience
+- Reduced cash handling
+
+<Note>
+  Card payment processing may require additional hardware and payment gateway configuration. Contact your payment processor for setup instructions.
+</Note>
+
+### ETF/Digital payments
+
+**Features:**
+- Electronic fund transfers
+- Digital wallet support (Apple Pay, Google Pay, etc.)
+- QR code payments
+- Mobile payment apps
+
+**Configuration:**
+- Requires compatible payment terminal
+- Digital payment gateway setup
+- Mobile payment enablement
+
+**Best for:**
+- Tech-savvy customers
+- Contactless transactions
+- Fast checkout experience
+
+## Payment workflow
+
+When processing a transaction:
+
+1. Cashier scans items and completes the sale
+2. POS displays total amount and available payment methods
+3. Default payment method is pre-selected
+4. Cashier can switch to another enabled method if needed
+5. Customer completes payment
+6. Receipt is printed/emailed
+
+## Custom payment method names
+
+You can customize payment method names to match your business terminology:
+
+**Standard:**
+```
+Cash,Card,ETF/Digital
+```
+
+**Custom examples:**
+```
+Cash,Credit Card,Mobile Payment
+Cash,Debit/Credit,E-Wallet
+Cash Only,Card Payment,Digital Wallet
+```
+
+<Warning>
+  Keep payment method names consistent and clear. Avoid using special characters or overly long names that may not display properly on receipts.
+</Warning>
+
+## Payment method reporting
+
+Payment methods are tracked in sales reports:
+
+- **Daily sales by payment method** - See which methods are most popular
+- **Transaction counts** - Track number of transactions per method
+- **Payment reconciliation** - Match physical cash to cash sales
+- **Digital payment tracking** - Monitor card and ETF transaction volumes
+
+## Security considerations
+
+### Cash handling
+
+- Train staff on proper cash handling procedures
+- Use cash drops for large bills during busy periods
+- Perform regular cash counts and reconciliation
+- Secure cash drawer when not in use
+
+### Card and digital payments
+
+- Use PCI-compliant payment terminals
+- Never store full card numbers
+- Enable transaction receipts for dispute resolution
+- Monitor for suspicious transaction patterns
+
+## API configuration
+
+Payment methods are configured through the System Settings API:
+
+```http
+POST /api/system-settings
+```
+
+**Example request:**
+
+```json
+{
+  "availablePaymentMethods": "Cash,Card,ETF/Digital",
+  "defaultPaymentMethod": "Cash"
+}
+```
+
+**Validation rules:**
+- `availablePaymentMethods` cannot be empty
+- `defaultPaymentMethod` must exist in `availablePaymentMethods`
+- Payment method names are case-sensitive
+
+## Common configurations by business type
+
+### Pet store (standard)
+```
+Available: Cash,Card,ETF/Digital
+Default: Cash
+```
+
+### Small retail shop
+```
+Available: Cash,Card
+Default: Cash
+```
+
+### Modern cafe/restaurant
+```
+Available: Card,ETF/Digital
+Default: Card
+```
+
+### Farmers market vendor
+```
+Available: Cash
+Default: Cash
+```
+
+### Online pickup location
+```
+Available: Card,ETF/Digital
+Default: Card
+```
+
+## Troubleshooting
+
+### Payment method not appearing
+
+**Check:**
+- Method is spelled correctly in available payment methods
+- No extra spaces before/after commas
+- Settings have been saved
+
+### Default method not pre-selected
+
+**Check:**
+- Default method exists in available methods list
+- Default method name matches exactly (case-sensitive)
+- Browser cache has been cleared
+
+### Card/ETF payments not processing
+
+**Check:**
+- Payment terminal is connected and powered on
+- Payment gateway credentials are configured
+- Network connection is stable
+- Payment processor account is active
+
+## Best practices
+
+- **Enable multiple methods** - Offer customers payment flexibility
+- **Set appropriate default** - Choose your most common payment type
+- **Test all methods** - Verify each payment method works before going live
+- **Train staff** - Ensure cashiers know how to process each payment type
+- **Monitor usage** - Review payment method reports to optimize offerings
+- **Update regularly** - Add new payment methods as technology evolves
+
+## Next steps
+
+- Configure [System settings](/configuration/system-settings) for complete POS customization
+- Review [Processing sales](/features/sales-processing) to learn the checkout workflow
+- Set up [Receipt templates](/configuration/receipt-templates) to show payment methods on receipts
+- Explore [Sales reports](/advanced/reports-analytics) to analyze payment method usage

@@ -1,0 +1,349 @@
+---
+title: Database schema
+description: Complete reference for all database tables and relationships in the BMS POS system
+---
+
+The BMS POS system uses PostgreSQL via Supabase with Entity Framework Core for ORM and migrations. The schema includes 14 entities organized into core transactions, configuration, and audit tables.
+
+## Core tables
+
+### employees
+
+User accounts with role-based access control and hashed PINs.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `employee_id` | string(10) | Unique employee identifier |
+| `pin` | string(60) | BCrypt hashed PIN |
+| `name` | string(100) | Employee full name |
+| `role` | string(20) | Manager, Cashier, or Inventory |
+| `is_manager` | bool | Backward compatibility flag |
+| `is_active` | bool | Account active status |
+| `created_date` | datetime | Account creation timestamp |
+
+### products
+
+Product catalog with pricing, stock levels, and categorization.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `barcode` | string(50) | Unique product barcode |
+| `name` | string(200) | Product name |
+| `description` | string(500) | Product description (nullable) |
+| `price` | decimal(10,2) | Selling price |
+| `cost` | decimal(10,2) | Cost price |
+| `stock_quantity` | int | Current stock level |
+| `min_stock_level` | int | Low stock threshold (default: 5) |
+| `variant` | string(100) | Product variant (nullable) |
+| `brand` | string(100) | Brand name (nullable) |
+| `category` | string(100) | Product category (nullable) |
+| `image_url` | string(500) | Product image URL (nullable) |
+| `unit` | string(20) | Unit of measure (default: "pcs") |
+| `is_active` | bool | Product active status |
+| `created_date` | datetime | Creation timestamp |
+| `last_updated` | datetime | Last modification timestamp |
+
+### product_batches
+
+Batch tracking with expiration monitoring and supplier information.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `product_id` | int | Foreign key to products |
+| `batch_number` | string(100) | Unique batch identifier |
+| `quantity` | int | Batch quantity |
+| `cost_per_unit` | decimal(10,2) | Unit cost for this batch |
+| `received_date` | datetime | Date batch was received |
+| `expiration_date` | datetime | Expiration date (nullable) |
+| `manufacturing_date` | datetime | Manufacturing date (nullable) |
+| `supplier` | string(100) | Supplier name (nullable) |
+| `lot_number` | string(100) | Supplier's lot number (nullable) |
+| `is_expired` | bool | Manual expiration flag |
+| `is_recalled` | bool | Recall status |
+| `recall_reason` | string(500) | Reason for recall (nullable) |
+| `days_until_expiry` | computed | Calculated days until expiration |
+| `expiry_status` | computed | GOOD, CAUTION, WARNING, CRITICAL, EXPIRED |
+| `created_date` | datetime | Creation timestamp |
+| `last_updated` | datetime | Last modification timestamp |
+
+**Expiry status thresholds:**
+- `EXPIRED` - 0 days or less
+- `CRITICAL` - 1-7 days
+- `WARNING` - 8-30 days
+- `CAUTION` - 31-60 days
+- `GOOD` - More than 60 days
+- `NO_EXPIRY` - No expiration date set
+
+### sales
+
+Transaction records with payment details and status tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `transaction_id` | string | Unique transaction identifier |
+| `employee_id` | int | Foreign key to employees |
+| `sale_date` | datetime | Transaction timestamp |
+| `subtotal` | decimal | Pre-tax subtotal |
+| `tax_rate` | decimal | Tax percentage applied |
+| `tax_amount` | decimal | Calculated tax amount |
+| `discount_amount` | decimal | Discount applied (default: 0) |
+| `discount_reason` | string | Reason for discount (nullable) |
+| `total` | decimal | Final total amount |
+| `amount_paid` | decimal | Amount tendered by customer |
+| `change` | decimal | Change returned |
+| `payment_method` | string | Cash, Card, or ETF/Digital |
+| `status` | string | Completed, Voided, or Refunded |
+| `notes` | string | Additional notes (nullable) |
+
+### sale_items
+
+Line items for each transaction with product details at time of sale.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `sale_id` | int | Foreign key to sales |
+| `product_id` | int | Foreign key to products |
+| `quantity` | int | Quantity sold |
+| `unit_price` | decimal | Price per unit at time of sale |
+| `line_total` | decimal | Total for this line item |
+| `product_name` | string | Product name snapshot |
+| `product_barcode` | string | Barcode snapshot (nullable) |
+
+### returns
+
+Return records with approval workflow.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `return_id` | string | Unique return identifier |
+| `original_sale_id` | int | Foreign key to original sale |
+| `return_date` | datetime | Return timestamp |
+| `status` | string | Completed, Pending, or Cancelled |
+| `total_refund_amount` | decimal | Total amount refunded |
+| `processed_by_employee_id` | int | Employee who processed return |
+| `approved_by_employee_id` | int | Manager who approved (nullable) |
+| `manager_approval_required` | bool | Whether approval was needed |
+| `notes` | string | Additional notes (nullable) |
+
+### return_items
+
+Line items for returns with condition and restock tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `return_id` | int | Foreign key to returns |
+| `original_sale_item_id` | int | Original sale item reference |
+| `product_id` | int | Foreign key to products |
+| `product_name` | string | Product name |
+| `return_quantity` | int | Quantity being returned |
+| `unit_price` | decimal | Unit price from original sale |
+| `line_total` | decimal | Total for this return line |
+| `condition` | string | "good" or "defective" |
+| `reason` | string | Return reason |
+| `restocked_to_inventory` | bool | Whether item was restocked |
+
+## Inventory management
+
+### inventory_counts
+
+Inventory count sessions for physical stock verification.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `count_name` | string(100) | Descriptive name for count |
+| `count_type` | string(50) | FULL, CYCLE, SPOT, or ANNUAL |
+| `started_date` | datetime | Count start timestamp |
+| `completed_date` | datetime | Count completion timestamp (nullable) |
+| `status` | string(20) | IN_PROGRESS, COMPLETED, or CANCELLED |
+| `started_by_employee_id` | int | Employee who started count |
+| `completed_by_employee_id` | int | Employee who completed (nullable) |
+| `notes` | string(500) | Count notes (nullable) |
+| `total_items_counted` | int | Number of items counted |
+| `total_discrepancies` | int | Number of items with variance |
+| `total_shrinkage_value` | decimal(10,2) | Total value of missing stock |
+| `total_overage_value` | decimal(10,2) | Total value of excess stock |
+| `net_variance_value` | decimal(10,2) | Net financial impact |
+
+### inventory_count_items
+
+Individual product counts with variance tracking.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `inventory_count_id` | int | Foreign key to inventory_counts |
+| `product_id` | int | Foreign key to products |
+| `product_batch_id` | int | Foreign key to product_batches (nullable) |
+| `system_quantity` | int | Quantity per system records |
+| `counted_quantity` | int | Physically counted quantity |
+| `variance` | int | Difference (counted - system) |
+| `cost_per_unit` | decimal(10,2) | Unit cost |
+| `variance_value` | decimal(10,2) | Financial impact of variance |
+| `discrepancy_reason` | string(200) | Reason for variance (nullable) |
+| `notes` | string(500) | Additional notes (nullable) |
+| `counted_by_employee_id` | int | Employee who counted |
+| `counted_date` | datetime | Count timestamp |
+| `is_verified` | bool | Verification status |
+| `verified_by_employee_id` | int | Verifying employee (nullable) |
+| `verified_date` | datetime | Verification timestamp (nullable) |
+
+### stock_adjustments
+
+Manual stock corrections with approval workflow and audit trail.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `product_id` | int | Foreign key to products |
+| `adjustment_type` | string(50) | DAMAGE, THEFT, EXPIRED, FOUND, CORRECTION, RETURN |
+| `quantity_change` | int | Quantity adjustment (can be negative) |
+| `quantity_before` | int | Stock level before adjustment |
+| `quantity_after` | int | Stock level after adjustment |
+| `reason` | string(500) | Reason for adjustment |
+| `notes` | string(1000) | Additional notes (nullable) |
+| `adjusted_by_employee_id` | int | Employee who made adjustment |
+| `cost_impact` | decimal(10,2) | Financial impact |
+| `adjustment_date` | datetime | Adjustment timestamp |
+| `reference_number` | string(200) | External reference (nullable) |
+| `requires_approval` | bool | Whether approval is needed |
+| `is_approved` | bool | Approval status |
+| `approved_by_employee_id` | int | Approving employee (nullable) |
+| `approved_date` | datetime | Approval timestamp (nullable) |
+
+## Configuration tables
+
+### tax_settings
+
+Tax rates and business information for receipts.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `business_name` | string | Business name for receipts |
+| `tax_number` | string | Tax registration number |
+| `business_address` | string | Business address |
+| `enable_tax` | bool | Whether tax is enabled (default: true) |
+| `tax_name` | string | Primary tax name (default: "Sales Tax") |
+| `tax_rate` | decimal | Primary tax rate 0-100% (default: 10) |
+| `enable_secondary_tax` | bool | Enable second tax (default: false) |
+| `secondary_tax_name` | string | Secondary tax name |
+| `secondary_tax_rate` | decimal | Secondary tax rate 0-100% |
+| `enable_tax_exemptions` | bool | Allow tax exemptions |
+| `notes` | string | Additional notes (nullable) |
+| `created_date` | datetime | Creation timestamp |
+| `last_updated` | datetime | Last modification timestamp |
+
+### system_settings
+
+System-wide configuration for POS behavior, receipts, and returns.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `date_format` | string | Date format (default: "MM/DD/YYYY") |
+| `decimal_separator` | string | Decimal separator (default: ".") |
+| `thousands_separator` | string | Thousands separator (default: ",") |
+| `auto_logout_minutes` | int | Auto-logout timeout (default: 30) |
+| `default_payment_method` | string | Default payment method (default: "Cash") |
+| `available_payment_methods` | string | Comma-separated payment methods |
+| `sound_effects_enabled` | bool | Enable sound effects (default: true) |
+| `require_manager_approval_for_discount` | bool | Require manager approval for discounts |
+| `theme` | string | UI theme (default: "light") |
+| `font_scaling` | double | Font size multiplier (default: 1.0) |
+| `receipt_header_text` | string | Receipt header (nullable) |
+| `receipt_footer_text` | string | Receipt footer (nullable) |
+| `store_location` | string | Store location (nullable) |
+| `phone_number` | string | Store phone number (nullable) |
+| `print_receipt_automatically` | bool | Auto-print receipts (default: true) |
+| `receipt_copies` | int | Number of receipt copies (default: 1) |
+| `receipt_paper_size` | string | 58mm or 80mm (default: "80mm") |
+| `show_receipt_preview` | bool | Show preview before print |
+| `email_receipt_enabled` | bool | Enable email receipts |
+| `default_receipt_email` | string | Default email for receipts (nullable) |
+| `receipt_font_size` | string | Small, Normal, or Large (default: "Normal") |
+| `receipt_template_layout` | string | Compact, Standard, or Detailed (default: "Standard") |
+| `show_receipt_barcode` | bool | Show barcode on receipt (default: true) |
+| `enable_returns` | bool | Enable returns feature (default: true) |
+| `require_receipt_for_returns` | bool | Require receipt for returns (default: true) |
+| `require_manager_approval_for_returns` | bool | Require manager approval |
+| `restock_returned_items` | bool | Auto-restock returned items (default: true) |
+| `allow_defective_item_returns` | bool | Allow defective returns (default: true) |
+| `return_time_limit_days` | int | Return window in days (default: 7) |
+| `return_manager_approval_amount` | decimal | Approval threshold amount (default: 1000.00) |
+| `return_reasons` | string | Comma-separated return reasons |
+| `product_categories` | string | Comma-separated product categories |
+| `created_date` | datetime | Creation timestamp |
+| `last_updated` | datetime | Last modification timestamp |
+
+### admin_settings
+
+Administrative settings for updates, security, and database management.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `current_version` | string | Current system version (default: "1.2.0") |
+| `update_status` | string | checking, up-to-date, available, downloading, ready, error |
+| `available_version` | string | Available update version (nullable) |
+| `update_description` | string | Update description (nullable) |
+| `require_strong_pins` | bool | Enforce strong PIN policy |
+| `max_failed_login_attempts` | int | Login attempt limit (default: 5) |
+| `log_level` | string | error, warning, info, debug (default: "info") |
+| `performance_metrics_enabled` | bool | Enable metrics (default: true) |
+| `cache_enabled` | bool | Enable caching (default: true) |
+| `database_status` | string | Database connection status |
+| `last_backup` | datetime | Last backup timestamp (nullable) |
+| `last_backup_method` | string | CLI, Dashboard, or Manual (nullable) |
+| `last_backup_size` | string | Backup file size (nullable) |
+| `last_backup_path` | string | Backup file path (nullable) |
+| `created_date` | datetime | Creation timestamp |
+| `last_updated` | datetime | Last modification timestamp |
+
+## Audit tables
+
+### user_activities
+
+Complete audit trail of all user actions in the system.
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | int | Primary key |
+| `user_id` | int | Foreign key to employees (nullable) |
+| `user_name` | string(100) | User name at time of action |
+| `action` | string(200) | Action description |
+| `details` | string | Detailed action information (nullable) |
+| `ip_address` | string(45) | IP address (nullable) |
+| `timestamp` | datetime | Action timestamp |
+| `entity_type` | string(50) | Type of entity affected (nullable) |
+| `entity_id` | int | ID of entity affected (nullable) |
+| `action_type` | string(20) | CREATE, UPDATE, DELETE, VIEW, LOGIN, etc. |
+
+## Relationships
+
+### One-to-many relationships
+
+- **employees** → **sales** (one employee processes many sales)
+- **employees** → **returns** (one employee processes many returns)
+- **employees** → **stock_adjustments** (one employee makes many adjustments)
+- **products** → **product_batches** (one product has many batches)
+- **products** → **sale_items** (one product appears in many sales)
+- **sales** → **sale_items** (one sale has many line items)
+- **sales** → **returns** (one sale can have one return)
+- **returns** → **return_items** (one return has many line items)
+- **inventory_counts** → **inventory_count_items** (one count has many items)
+
+### Foreign key constraints
+
+All foreign key relationships enforce referential integrity with appropriate cascade rules:
+
+- Delete cascades for dependent records (e.g., sale_items when sale is deleted)
+- Restrict deletes for referenced records (e.g., cannot delete employee with active sales)
+- Nullable foreign keys for optional relationships (e.g., approved_by_employee_id)

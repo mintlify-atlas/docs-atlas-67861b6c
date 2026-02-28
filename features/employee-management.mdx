@@ -1,0 +1,534 @@
+---
+title: Employee management
+description: User account management with role-based permissions and secure PIN authentication
+---
+
+## Overview
+
+The employee management system allows managers to create and manage user accounts for cashiers, inventory staff, and other managers. Each employee has a unique ID, secure PIN, and assigned role that determines their access permissions.
+
+<CardGroup cols={2}>
+  <Card title="Role-based access" icon="user-shield">
+    Three roles: Manager, Cashier, and Inventory with distinct permissions
+  </Card>
+  <Card title="PIN authentication" icon="lock">
+    Secure 6-digit PIN with SHA-256 hashing
+  </Card>
+  <Card title="User activity tracking" icon="clock-rotate-left">
+    Complete audit trail of employee actions
+  </Card>
+  <Card title="Active/inactive status" icon="toggle-on">
+    Deactivate employees without deleting records
+  </Card>
+</CardGroup>
+
+## User roles
+
+### Manager
+
+**Full system access** including:
+
+- Access POS for sales processing
+- Apply discounts (no approval needed)
+- Process returns and refunds
+- View all reports and analytics
+- Manage inventory (add/edit/delete products)
+- Manage employees (create/edit/deactivate)
+- Configure system settings
+- View user activity logs
+- Access hardware configuration
+
+**Dashboard**: Manager dashboard with complete system overview
+
+### Cashier
+
+**Point-of-sale focused** access:
+
+- Access POS for sales processing
+- Request manager approval for discounts (if configured)
+- Cannot process returns (manager only)
+- Limited report access (own sales history)
+- Cannot manage inventory
+- Cannot manage employees
+- Cannot change system settings
+- Cannot view other user activity
+
+**Dashboard**: Manager dashboard (limited access to certain sections)
+
+### Inventory
+
+**Inventory management** focused access:
+
+- Access inventory management screen
+- Add/edit/delete products
+- Adjust stock quantities
+- Cannot access POS
+- Cannot process sales
+- Cannot manage employees
+- Limited report access (inventory reports)
+
+**Dashboard**: Inventory dashboard with stock overview
+
+## Managing employees
+
+### Adding employees
+
+<Steps>
+  <Step title="Navigate to Employee Management">
+    From the Manager dashboard, click "Employees" to access the employee management screen.
+  </Step>
+  
+  <Step title="Fill in employee details">
+    Enter required information:
+    - **Name** - Employee's full name
+    - **Employee ID** - Unique identifier (e.g., "0001", "CASH01")
+    - **PIN** - 6-digit numeric PIN for authentication
+    - **Role** - Select from Manager, Cashier, or Inventory
+  </Step>
+  
+  <Step title="Click 'Add'">
+    The employee is created and appears in the employee list. The PIN is automatically hashed using SHA-256 before storage.
+  </Step>
+</Steps>
+
+**Validation rules**:
+- Name cannot be empty
+- Employee ID must be unique
+- PIN must be exactly 6 digits (0-9)
+- Role must be one of: Manager, Cashier, Inventory
+
+### API endpoint
+
+**Create employee**: `POST /api/employees`
+
+```json
+{
+  "employeeId": "0001",
+  "pin": "123456",
+  "name": "John Smith",
+  "role": "Cashier",
+  "isManager": false
+}
+```
+
+**Response**: Employee object with hashed PIN
+
+### Editing employees
+
+<Steps>
+  <Step title="Select employee">
+    Click on an employee in the list to load their information into the edit form.
+  </Step>
+  
+  <Step title="Modify details">
+    Update any field:
+    - Name
+    - Employee ID (must remain unique)
+    - PIN (displays as "••••" for security)
+    - Role
+  </Step>
+  
+  <Step title="Click 'Save'">
+    Changes are saved and logged in user activity. The system tracks:
+    - What changed (field-level detail)
+    - Who made the change
+    - When the change occurred
+  </Step>
+</Steps>
+
+**Change tracking**:
+- Name changes: `'John Smith' → 'John A. Smith'`
+- Employee ID changes: `'0001' → '0002'`
+- PIN updates: `"PIN updated"` (actual PINs never logged)
+- Role changes: `'Cashier' → 'Manager'`
+- Manager status: `false → true`
+- Active status: `true → false`
+
+### API endpoint
+
+**Update employee**: `PUT /api/employees/{id}`
+
+```json
+{
+  "id": 123,
+  "employeeId": "0001",
+  "pin": "654321",
+  "name": "John A. Smith",
+  "role": "Manager",
+  "isManager": true,
+  "isActive": true,
+  "createdDate": "2026-01-15T10:30:00Z"
+}
+```
+
+### Deactivating employees
+
+<Steps>
+  <Step title="Select employee">
+    Click on the employee to load their information.
+  </Step>
+  
+  <Step title="Click 'Deactivate'">
+    A confirmation dialog appears.
+  </Step>
+  
+  <Step title="Confirm deactivation">
+    The employee's `isActive` status is set to `false`. They:
+    - Cannot log in to the system
+    - Appear in the employee list with "(Inactive)" label
+    - Are grayed out in the list
+    - Remain in the database for historical reporting
+  </Step>
+</Steps>
+
+**Reactivating**: Click "Activate" button to restore access.
+
+### API endpoints
+
+**Deactivate**: `PUT /api/employees/{id}/deactivate`
+
+**Activate**: `PUT /api/employees/{id}/activate`
+
+## PIN management
+
+### PIN requirements
+
+- **Length**: Exactly 6 digits
+- **Characters**: Numeric only (0-9)
+- **Uniqueness**: Not enforced (multiple employees can have same PIN, though not recommended)
+- **Security**: Hashed with SHA-256 before storage
+
+### Setting PINs
+
+During employee creation or editing:
+
+1. Enter 6-digit PIN in PIN field
+2. PIN is displayed as entered (visible to manager)
+3. On save, PIN is hashed: `SHA256(pin)`
+4. Only hash is stored in database
+
+### Resetting PINs
+
+<Steps>
+  <Step title="Select employee">
+    Click on the employee who needs PIN reset.
+  </Step>
+  
+  <Step title="Click 'Reset PIN'">
+    A modal keyboard appears with title "Enter New PIN (4-6 digits)".
+  </Step>
+  
+  <Step title="Enter new PIN">
+    Type new 6-digit PIN using on-screen keyboard.
+    
+    **Note**: The UI says "4-6 digits" but the backend enforces exactly 6 digits.
+  </Step>
+  
+  <Step title="Submit">
+    New PIN is hashed and saved. The employee is notified to use the new PIN for their next login.
+  </Step>
+</Steps>
+
+**PIN reset logging**:
+```
+Reset PIN for employee: John Smith
+Employee ID: 0001, PIN length changed from 88 to 6 digits
+```
+
+Note: The "88 characters" represents the SHA-256 hash length, not the actual PIN.
+
+### API endpoint
+
+**Reset PIN**: `PUT /api/employees/{id}/reset-pin`
+
+```json
+{
+  "newPin": "654321"
+}
+```
+
+**Alternative**: Update entire employee with new PIN via `PUT /api/employees/{id}`
+
+## PIN security
+
+### Hashing algorithm
+
+PINs are hashed using SHA-256:
+
+```csharp
+public string HashPin(string pin)
+{
+    using (var sha256 = SHA256.Create())
+    {
+        var bytes = Encoding.UTF8.GetBytes(pin);
+        var hash = sha256.ComputeHash(bytes);
+        return Convert.ToBase64String(hash);
+    }
+}
+```
+
+### PIN verification
+
+During login:
+
+1. User enters Employee ID and PIN
+2. System retrieves employee record
+3. User's entered PIN is hashed
+4. Hashed value compared to stored hash
+5. If match, login succeeds
+
+**Login endpoint**: Handled by Electron IPC `validateUserLogin(employeeId, pin)`
+
+### Manager PIN validation
+
+For discount approval and return authorization:
+
+1. System prompts for manager PIN
+2. PIN is hashed and compared against all manager accounts
+3. If match found with `role === 'Manager'`, approval succeeds
+4. Manager's name is logged with the action
+
+**Validation endpoint**: Handled by Electron IPC `validateManagerPin(pin)`
+
+### Security best practices
+
+<Warning>
+  **PIN security considerations**:
+  
+  - PINs are only 6 digits (1,000,000 combinations)
+  - SHA-256 without salt is vulnerable to rainbow table attacks
+  - PINs should be treated as convenience, not high-security
+  - Implement account lockout after failed attempts (not currently implemented)
+  - Consider adding salt to PIN hashing for production deployments
+  - Avoid sharing PINs between employees
+  - Rotate PINs periodically for high-privilege accounts
+</Warning>
+
+## Employee list
+
+### Display format
+
+Employees are shown in a vertical list with:
+
+- **Name** - Primary identifier
+- **Employee ID** - Unique ID badge number
+- **Role** - Manager/Cashier/Inventory
+- **Status** - (Inactive) if not active
+
+**Visual indicators**:
+- Blue background + blue left border: Selected employee
+- Gray text: Inactive employee
+- Hover effect: Light gray background
+
+### Search and filtering
+
+**Search bar** filters employees by:
+- Name (case-insensitive)
+- Employee ID
+- Role
+
+**Inactive toggle**: "Show inactive employees" checkbox includes deactivated users in list.
+
+### API endpoint
+
+**List employees**: `GET /api/employees?includeInactive=true`
+
+**Response**:
+```json
+[
+  {
+    "id": 123,
+    "employeeId": "0001",
+    "pin": "hashed_pin_value",
+    "name": "John Smith",
+    "role": "Cashier",
+    "isManager": false,
+    "isActive": true,
+    "createdDate": "2026-01-15T10:30:00Z"
+  }
+]
+```
+
+## Access control
+
+### Session management
+
+When an employee logs in:
+
+1. Credentials validated against database
+2. Session created in `SessionManager`
+3. Session includes:
+   - Employee ID
+   - Name
+   - Role
+   - Login timestamp
+   - Last activity timestamp
+
+**Session storage**: `sessionStorage.setItem('currentUser', JSON.stringify(session))`
+
+### Permission checking
+
+Routes use `SessionGuard` component to enforce access:
+
+```tsx
+<SessionGuard requiredRole="Manager">
+  {/* Employee management screen */}
+</SessionGuard>
+```
+
+**Permission levels**:
+- `requiredRole="Manager"` - Managers only
+- `requiredPermission="inventory.view"` - Inventory or Manager
+- No restriction - All authenticated users
+
+### Auto-logout
+
+Sessions expire after inactivity period (configured in System Settings):
+
+- Default: 15 minutes
+- Extends by 5 minutes on business actions (completing sale)
+- User redirected to login screen on expiration
+- Session data cleared from storage
+
+## User activity tracking
+
+All employee actions are logged:
+
+### Tracked events
+
+**Employee management**:
+- `CREATE` - New employee created
+- `UPDATE` - Employee details modified
+- `DEACTIVATE` - Employee deactivated
+- `ACTIVATE` - Employee reactivated
+- `PIN_RESET` - PIN changed
+
+**Inventory**:
+- `CREATE` - Product added
+- `UPDATE` - Product modified
+- `DELETE` - Product deleted
+- `PRICE_CHANGE_MAJOR` - Price changed >20%
+
+**Sales**:
+- `SALE` - Transaction completed
+
+**Returns**:
+- `CREATE` - Return processed
+
+### Activity log format
+
+```json
+{
+  "id": 456,
+  "employeeId": 123,
+  "employeeName": "John Smith",
+  "action": "Created employee: Jane Doe",
+  "details": "Employee ID: 0002, Role: Cashier, Manager: false",
+  "entityType": "Employee",
+  "entityId": 789,
+  "actionType": "CREATE",
+  "timestamp": "2026-02-28T14:25:30Z",
+  "ipAddress": "192.168.1.100"
+}
+```
+
+**View logs**: Manager dashboard → User Activity
+
+## API endpoints
+
+Complete employee management API:
+
+| Endpoint | Method | Purpose |
+|----------|--------|----------|
+| `/api/employees` | GET | List employees (with includeInactive param) |
+| `/api/employees/{id}` | GET | Get single employee |
+| `/api/employees` | POST | Create new employee |
+| `/api/employees/{id}` | PUT | Update employee |
+| `/api/employees/{id}/deactivate` | PUT | Deactivate employee |
+| `/api/employees/{id}/activate` | PUT | Reactivate employee |
+| `/api/employees/{id}/reset-pin` | PUT | Reset employee PIN |
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="For managers">
+    - Use descriptive Employee IDs (e.g., "CASH01", "INV02") for easy identification
+    - Never share PINs between employees
+    - Deactivate employees immediately on termination
+    - Review user activity logs weekly for unusual actions
+    - Rotate manager PINs monthly
+    - Assign minimum role required (principle of least privilege)
+    - Document role changes and reason in external records
+  </Accordion>
+  
+  <Accordion title="For employees">
+    - Memorize your PIN - don't write it down
+    - Never share your PIN with coworkers
+    - Log out when leaving the POS terminal unattended
+    - Report forgotten PINs to manager immediately
+    - Notify manager if you suspect someone else used your account
+  </Accordion>
+  
+  <Accordion title="For system administrators">
+    - Back up employee database regularly
+    - Implement account lockout after 3-5 failed login attempts
+    - Add salt to PIN hashing algorithm before production
+    - Monitor user activity logs for security anomalies
+    - Set appropriate session timeout based on store traffic patterns
+    - Consider adding password complexity rules for high-security environments
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Cannot create employee - Employee ID exists">
+    **Symptoms**: Error "Employee ID already exists" when adding
+    
+    **Solutions**:
+    - Check employee list for duplicate Employee ID
+    - Include inactive employees in search (toggle checkbox)
+    - Choose a different Employee ID
+    - If truly duplicate, deactivate or delete old record
+  </Accordion>
+  
+  <Accordion title="Employee cannot login">
+    **Symptoms**: "Invalid credentials" error at login screen
+    
+    **Solutions**:
+    - Verify Employee ID is exactly as entered (case-sensitive)
+    - Confirm employee is active (not deactivated)
+    - Check PIN is exactly 6 digits
+    - Use Reset PIN to set a new PIN
+    - Verify employee record exists in database
+  </Accordion>
+  
+  <Accordion title="Manager approval not working">
+    **Symptoms**: Manager PIN rejected during discount approval
+    
+    **Solutions**:
+    - Verify PIN belongs to user with Role = "Manager"
+    - Check manager account is active
+    - Confirm PIN is exactly 6 digits
+    - Test manager login directly to verify PIN works
+    - Check user activity logs for PIN reset history
+  </Accordion>
+  
+  <Accordion title="PIN reset not saving">
+    **Symptoms**: New PIN doesn't work after reset
+    
+    **Solutions**:
+    - Ensure new PIN is exactly 6 digits (not 4-6 as UI suggests)
+    - Wait a few seconds for database to update
+    - Refresh employee list to verify Last Updated timestamp
+    - Check browser console for JavaScript errors
+    - Try full employee update via Edit → Save instead
+  </Accordion>
+</AccordionGroup>
+
+## Related documentation
+
+- [User activity](/api/user-activity) - View complete audit trail
+- [System settings](/configuration/system-settings) - Configure session timeouts
+- [Sales processing](/features/sales-processing) - Manager discount approval
+- [Returns and refunds](/features/returns-refunds) - Manager authorization

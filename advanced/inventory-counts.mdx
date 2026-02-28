@@ -1,0 +1,202 @@
+---
+title: Inventory counts
+description: Perform physical inventory counts and reconcile with system records
+---
+
+The physical inventory counting feature helps you verify actual stock levels against system records and make necessary adjustments.
+
+## Overview
+
+Inventory counting allows you to:
+
+- Perform physical counts of products
+- Compare actual counts with system stock levels
+- Automatically calculate discrepancies
+- Create stock adjustments to reconcile differences
+- Maintain accurate inventory records
+
+## Performing a physical count
+
+To conduct an inventory count:
+
+<Steps>
+  <Step title="Access physical counting">
+    Navigate to **Advanced Inventory Management** and select the **Physical Counting** tab.
+  </Step>
+  
+  <Step title="Select a product">
+    Use the search field to find the product by name or barcode. You can scan barcodes or type to search.
+  </Step>
+  
+  <Step title="View system stock">
+    Once selected, the system displays the current stock level recorded in the database.
+  </Step>
+  
+  <Step title="Enter actual count">
+    Input the actual quantity counted during the physical inventory check.
+  </Step>
+  
+  <Step title="Review the difference">
+    The system automatically calculates and displays:
+    - System stock quantity
+    - Actual count quantity
+    - Difference (positive or negative)
+  </Step>
+  
+  <Step title="Apply the count">
+    Click **Apply Count** to create a stock adjustment matching the difference.
+  </Step>
+</Steps>
+
+## Count reconciliation
+
+When you apply a physical count, the system:
+
+1. Calculates the difference between system and actual count
+2. Creates a stock adjustment with type "CORRECTION"
+3. Applies the adjustment reason: "Physical count adjustment"
+4. Updates the product's stock quantity to match the actual count
+5. Logs the activity for audit purposes
+
+## Types of inventory counts
+
+While the system supports general physical counting, you can organize counts by:
+
+### Full inventory count
+
+Count all products in your inventory:
+- Typically performed annually or semi-annually
+- Requires significant time and resources
+- Provides complete inventory verification
+- Best done when business is closed
+
+### Cycle counting
+
+Count a subset of inventory on a rotating schedule:
+- Count high-value items more frequently
+- Count fast-moving items regularly
+- Distribute counting workload over time
+- Reduces need for full shutdowns
+
+### Spot counting
+
+Count specific products as needed:
+- Verify items with suspected discrepancies
+- Check products before restocking
+- Investigate customer complaints
+- Random audits for quality control
+
+### Annual count
+
+Comprehensive year-end inventory:
+- Required for financial reporting
+- Complete verification of all stock
+- Reconcile all discrepancies
+- Document for accounting purposes
+
+## Handling count discrepancies
+
+When actual counts don't match system records:
+
+### Positive differences (more stock than recorded)
+
+Possible causes:
+- Unrecorded deliveries
+- Return processing errors
+- Data entry mistakes
+- Found inventory
+
+The system creates a positive adjustment to increase stock.
+
+### Negative differences (less stock than recorded)
+
+Possible causes:
+- Theft or shrinkage
+- Damage not recorded
+- Sales processing errors
+- Misplaced inventory
+
+The system creates a negative adjustment to decrease stock.
+
+## Count workflow
+
+The physical counting process in InventoryManagement.tsx:760-869:
+
+1. **Product selection**: Search and select product to count
+2. **System stock display**: Shows current recorded quantity
+3. **Actual count entry**: Enter physically counted quantity
+4. **Difference calculation**: Automatically computed in real-time
+5. **Adjustment creation**: Creates CORRECTION type adjustment
+6. **Stock update**: Updates product quantity to match count
+7. **Activity logging**: Records the adjustment for audit trail
+
+## Best practices for inventory counts
+
+### Before counting
+
+<Steps>
+  <Step title="Schedule appropriately">
+    Choose times with minimal activity, ideally when the store is closed.
+  </Step>
+  
+  <Step title="Organize inventory">
+    Ensure products are properly arranged and labeled.
+  </Step>
+  
+  <Step title="Prepare tools">
+    Have barcode scanners, count sheets, and the POS system ready.
+  </Step>
+  
+  <Step title="Assign teams">
+    Designate counting teams with clear responsibilities.
+  </Step>
+</Steps>
+
+### During counting
+
+- Count each product carefully and completely
+- Use barcode scanners to avoid entry errors
+- Double-check high-value items
+- Note any damaged or expired products separately
+- Mark counted areas to avoid double-counting
+
+### After counting
+
+- Review all discrepancies before applying adjustments
+- Investigate significant differences
+- Document reasons for major variances
+- Update inventory policies based on findings
+- Generate count reports for management review
+
+## Inventory count accuracy
+
+To maintain accurate counts:
+
+- Perform counts regularly (cycle counts)
+- Train staff on proper counting procedures
+- Use barcode scanning to minimize errors
+- Investigate recurring discrepancies
+- Review adjustment history for patterns
+- Implement loss prevention measures
+
+## Integration with stock adjustments
+
+Physical counts automatically create stock adjustments with:
+
+- **Adjustment type**: CORRECTION
+- **Quantity change**: Difference between count and system
+- **Reason**: "Physical count adjustment"
+- **Employee**: Current logged-in user
+- **Timestamp**: When the count was applied
+
+These adjustments appear in the **Stock Adjustments** tab and may require manager approval depending on your settings.
+
+## Count frequency recommendations
+
+| Inventory type | Recommended frequency |
+|----------------|----------------------|
+| High-value items | Weekly or bi-weekly |
+| Fast-moving products | Monthly |
+| Medium-value items | Quarterly |
+| Slow-moving products | Semi-annually |
+| All inventory (full count) | Annually |

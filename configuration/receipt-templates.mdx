@@ -1,0 +1,354 @@
+---
+title: Receipt templates
+description: Customize receipt layout, headers, footers, and paper sizes
+---
+
+Receipt templates control how customer receipts are formatted and displayed. Customize headers, footers, layout styles, and printing options to match your brand and operational needs.
+
+## Receipt structure
+
+BMS POS receipts follow a standard structure:
+
+1. **Header** - Business name and custom header text
+2. **Business information** - Store location, phone number, tax number
+3. **Transaction details** - Date, time, transaction ID, cashier
+4. **Line items** - Products with prices and quantities
+5. **Subtotal and tax** - Itemized calculations
+6. **Payment information** - Method and amounts
+7. **Footer** - Custom thank you message
+8. **Barcode** - Transaction lookup code (optional)
+
+## Template layouts
+
+Choose from three pre-designed layouts optimized for different needs.
+
+<ParamField path="receiptTemplateLayout" type="string" default="Standard">
+  Overall receipt layout and detail level
+</ParamField>
+
+### Compact layout
+
+Minimal layout that fits more content on small receipts. Best for:
+- High-volume retail environments
+- Simple transactions with few items
+- Minimizing paper usage
+
+**Features:**
+- Condensed spacing
+- Single-line item descriptions
+- Minimal headers and footers
+- Essential information only
+
+### Standard layout
+
+Balanced layout with all essential information. Best for:
+- Most retail environments
+- General-purpose receipts
+- Standard customer expectations
+
+**Features:**
+- Comfortable spacing
+- Full product descriptions
+- Complete tax breakdown
+- Professional appearance
+
+### Detailed layout
+
+Comprehensive layout with full product details. Best for:
+- Pet stores with detailed product info
+- Transactions requiring complete records
+- Customer service documentation
+
+**Features:**
+- Generous spacing
+- Extended product descriptions
+- Category information
+- Batch and expiry details (if applicable)
+- Complete tax itemization
+
+<Note>
+  Use the **Preview Template** button in System Settings to see how each layout looks with sample data.
+</Note>
+
+## Header customization
+
+Configure the top section of your receipts.
+
+<ParamField path="receiptHeaderText" type="string" optional>
+  Custom message displayed at the top of receipts
+  
+  Examples:
+  - `WELCOME TO BMS PET STORE`
+  - `Thank you for shopping with us!`
+  - `Your Pet's Happiness is Our Priority`
+</ParamField>
+
+<ParamField path="businessName" type="string" required>
+  Business name from [Tax Settings](/configuration/tax-settings)
+  
+  Automatically displayed below the header text.
+</ParamField>
+
+<ParamField path="storeLocation" type="string" optional>
+  Store address or location identifier
+  
+  Example: `123 Main Street, City, State 12345`
+</ParamField>
+
+<ParamField path="phoneNumber" type="string" optional>
+  Contact phone number
+  
+  Example: `Phone: (555) 123-4567`
+</ParamField>
+
+## Footer customization
+
+<ParamField path="receiptFooterText" type="string" optional>
+  Message displayed at the bottom of receipts
+  
+  Common uses:
+  - Thank you messages
+  - Return policy reminders
+  - Promotional information
+  - Social media handles
+  - Website URLs
+  
+  Examples:
+  - `Thank you for your purchase! Visit us again soon.`
+  - `Returns accepted within 7 days with receipt`
+  - `Follow us @bmspetstore for special offers`
+</ParamField>
+
+## Font and sizing
+
+Control text appearance for readability.
+
+<ParamField path="receiptFontSize" type="string" default="Normal">
+  Font size for all receipt text
+  
+  **Options:**
+  - `Small` - Compact text, more content per receipt
+  - `Normal` - Standard readability
+  - `Large` - Enhanced readability for customers with visual impairments
+</ParamField>
+
+<ParamField path="receiptPaperSize" type="string" default="80mm">
+  Thermal receipt paper width
+  
+  **Fixed at 80mm** for optimal compatibility with thermal printers. This ensures consistent formatting across all receipt layouts.
+</ParamField>
+
+## Transaction barcode
+
+Enable barcodes for easy receipt lookup during returns.
+
+<ParamField path="showReceiptBarcode" type="boolean" default="true">
+  Display scannable transaction ID barcode
+  
+  When enabled, a barcode representing the transaction ID is printed at the bottom of receipts. This allows cashiers to quickly scan receipts for:
+  - Return processing
+  - Transaction lookup
+  - Customer service inquiries
+</ParamField>
+
+<Note>
+  Barcodes are highly recommended for stores that process returns. They significantly speed up the return workflow.
+</Note>
+
+## Print copies
+
+<ParamField path="receiptCopies" type="number" default="1">
+  Number of receipt copies to print automatically
+  
+  Common configurations:
+  - `1` - Customer copy only (standard)
+  - `2` - Customer copy + merchant copy
+  - `3` - Customer + merchant + accounting
+</ParamField>
+
+## Email receipts
+
+Offer digital receipt delivery to customers.
+
+<ParamField path="emailReceiptEnabled" type="boolean" default="false">
+  Enable email receipt option
+  
+  When enabled, cashiers can send receipts via email in addition to or instead of printing.
+</ParamField>
+
+<ParamField path="defaultReceiptEmail" type="string" optional>
+  Pre-filled email address for receipt delivery
+  
+  Useful for testing or default corporate accounts.
+</ParamField>
+
+<Warning>
+  Email receipt functionality requires proper SMTP configuration. Contact your system administrator if email receipts are not working.
+</Warning>
+
+## Example receipt layouts
+
+### Compact template example
+
+```
+========================================
+       WELCOME TO BMS PET STORE
+           BMS Pet Store
+       123 Main St, City, State
+         Phone: (555) 123-4567
+========================================
+Date: 02/28/2026      Time: 14:35:21
+Transaction: #TXN-20260228-001
+Cashier: Jane Doe
+----------------------------------------
+Dog Food Premium 5kg       1   $29.99
+Cat Toy Mouse             2   $ 9.98
+----------------------------------------
+Subtotal:                     $39.97
+Sales Tax (10%):              $ 3.99
+========================================
+TOTAL:                        $43.96
+========================================
+Payment: Cash                 $50.00
+Change:                       $ 6.04
+========================================
+   Thank you for your purchase!
+========================================
+```
+
+### Standard template example
+
+```
+========================================
+       WELCOME TO BMS PET STORE
+
+           BMS Pet Store
+       123 Main St, City, State
+         Phone: (555) 123-4567
+       Tax ID: 123-456-7890
+========================================
+
+Date: 02/28/2026
+Time: 14:35:21
+Transaction ID: TXN-20260228-001
+Cashier: Jane Doe
+
+----------------------------------------
+ITEMS PURCHASED
+----------------------------------------
+
+Dog Food Premium 5kg
+Qty: 1 @ $29.99              $29.99
+
+Cat Toy Mouse
+Qty: 2 @ $4.99               $ 9.98
+
+----------------------------------------
+Subtotal:                     $39.97
+Sales Tax (10%):              $ 3.99
+========================================
+TOTAL:                        $43.96
+========================================
+
+Payment Method: Cash
+Amount Tendered:              $50.00
+Change Given:                 $ 6.04
+
+========================================
+   Thank you for your purchase!
+      Visit us again soon.
+========================================
+
+[Barcode: TXN-20260228-001]
+```
+
+### Detailed template example
+
+```
+========================================
+       WELCOME TO BMS PET STORE
+
+           BMS Pet Store
+       123 Main Street, Suite 100
+          City, State 12345
+         Phone: (555) 123-4567
+       Tax ID: 123-456-7890
+========================================
+
+Transaction Date: 02/28/2026
+Transaction Time: 14:35:21
+Transaction ID: TXN-20260228-001
+Cashier: Jane Doe
+
+========================================
+ITEMS PURCHASED
+========================================
+
+1. Dog Food Premium 5kg
+   Category: Pet Food
+   SKU: DF-PREM-5KG
+   Unit Price: $29.99
+   Quantity: 1
+   Subtotal: $29.99
+
+2. Cat Toy Mouse
+   Category: Pet Toys
+   SKU: CT-MOUSE-001
+   Unit Price: $4.99
+   Quantity: 2
+   Subtotal: $9.98
+
+========================================
+PRICE SUMMARY
+========================================
+
+Subtotal:                     $39.97
+Sales Tax (10%):              $ 3.99
+
+========================================
+TOTAL AMOUNT:                 $43.96
+========================================
+
+PAYMENT DETAILS
+----------------------------------------
+Payment Method: Cash
+Amount Tendered:              $50.00
+Change Given:                 $ 6.04
+
+========================================
+
+   Thank you for your purchase!
+      Visit us again soon.
+   
+ Returns accepted within 7 days with
+   receipt. Questions? Call us anytime!
+
+========================================
+
+[Barcode: TXN-20260228-001]
+
+========================================
+```
+
+## Best practices
+
+- **Keep headers concise** - Long headers can make receipts unnecessarily long
+- **Test layouts** - Preview templates before deploying to ensure readability
+- **Include contact info** - Phone number helps customers reach you with questions
+- **Enable barcodes** - Significantly speeds up returns processing
+- **Update footer seasonally** - Use footer text for promotions or holiday messages
+- **Use standard layout** - Most versatile for general retail operations
+
+## Configuration location
+
+Receipt template settings are configured in:
+
+- **System Settings** → Receipt & Printing Settings → Receipt Content
+- **System Settings** → Receipt & Printing Settings → Printing Configuration
+- **Tax Settings** → Business Information (for business name and tax number)
+
+## Next steps
+
+- Configure [System settings](/configuration/system-settings) for complete receipt customization
+- Set up [Tax settings](/configuration/tax-settings) for business information
+- Review [Sales processing](/features/sales-processing) to learn about automatic printing behavior

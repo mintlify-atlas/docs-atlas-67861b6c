@@ -1,0 +1,502 @@
+---
+title: Settings
+description: Configure system settings, tax settings, and administrative options in the BMS POS system
+---
+
+The Settings API provides endpoints for managing system configuration, tax settings, and administrative functions.
+
+## System settings
+
+### Get system settings
+
+Retrieve current system settings.
+
+```bash
+GET /api/system-settings
+```
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Settings ID
+</ResponseField>
+
+<ResponseField name="dateFormat" type="string">
+  Date format for display
+</ResponseField>
+
+<ResponseField name="receiptHeaderText" type="string">
+  Header text for receipts
+</ResponseField>
+
+<ResponseField name="receiptFooterText" type="string">
+  Footer text for receipts
+</ResponseField>
+
+<ResponseField name="printReceiptAutomatically" type="boolean">
+  Auto-print receipts after sale
+</ResponseField>
+
+<ResponseField name="theme" type="string">
+  UI theme preference
+</ResponseField>
+
+<ResponseField name="autoLogoutMinutes" type="integer">
+  Minutes of inactivity before auto-logout
+</ResponseField>
+
+<ResponseField name="enableReturns" type="boolean">
+  Whether returns are enabled
+</ResponseField>
+
+<ResponseField name="returnTimeLimitDays" type="integer">
+  Maximum days after sale to allow returns
+</ResponseField>
+
+<ResponseField name="requireManagerApprovalForReturns" type="boolean">
+  Require manager approval for all returns
+</ResponseField>
+
+<ResponseField name="returnManagerApprovalAmount" type="decimal">
+  Minimum return amount requiring manager approval
+</ResponseField>
+
+<ResponseField name="restockReturnedItems" type="boolean">
+  Automatically restock items in good condition
+</ResponseField>
+
+### Create or update system settings
+
+Update system settings. If no settings exist, creates default settings.
+
+```bash
+POST /api/system-settings
+```
+
+### Request body
+
+<ParamField body="dateFormat" type="string">
+  Date format
+</ParamField>
+
+<ParamField body="receiptHeaderText" type="string">
+  Receipt header
+</ParamField>
+
+<ParamField body="receiptFooterText" type="string">
+  Receipt footer
+</ParamField>
+
+<ParamField body="printReceiptAutomatically" type="boolean">
+  Auto-print setting
+</ParamField>
+
+<ParamField body="theme" type="string">
+  Theme preference
+</ParamField>
+
+<ParamField body="autoLogoutMinutes" type="integer">
+  Auto-logout timeout
+</ParamField>
+
+<ParamField body="enableReturns" type="boolean">
+  Enable/disable returns
+</ParamField>
+
+<ParamField body="returnTimeLimitDays" type="integer">
+  Return time limit
+</ParamField>
+
+<ParamField body="requireManagerApprovalForReturns" type="boolean">
+  Manager approval requirement
+</ParamField>
+
+<ParamField body="returnManagerApprovalAmount" type="decimal">
+  Approval amount threshold
+</ParamField>
+
+<ParamField body="restockReturnedItems" type="boolean">
+  Auto-restock setting
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/system-settings" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin" \
+  -d '{
+    "dateFormat": "YYYY-MM-DD",
+    "receiptHeaderText": "Thank you for shopping with us!",
+    "receiptFooterText": "Visit us again soon",
+    "printReceiptAutomatically": true,
+    "theme": "light",
+    "autoLogoutMinutes": 30,
+    "enableReturns": true,
+    "returnTimeLimitDays": 30,
+    "requireManagerApprovalForReturns": false,
+    "returnManagerApprovalAmount": 100.00,
+    "restockReturnedItems": true
+  }'
+```
+
+### Upload logo
+
+Upload a logo for receipts (BMP format for thermal printers).
+
+```bash
+POST /api/system-settings/upload-logo
+```
+
+### Request body
+
+Multipart form data with file upload.
+
+<ParamField body="logo" type="file" required>
+  Logo file (BMP format, max 2MB)
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/system-settings/upload-logo" \
+  -H "Content-Type: multipart/form-data" \
+  -F "logo=@/path/to/logo.bmp"
+```
+
+### Get business time
+
+Get the current business time (UTC).
+
+```bash
+GET /api/system-settings/business-time
+```
+
+## Tax settings
+
+### Get tax settings
+
+Retrieve current tax configuration.
+
+```bash
+GET /api/tax-settings
+```
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Settings ID
+</ResponseField>
+
+<ResponseField name="businessName" type="string">
+  Business name
+</ResponseField>
+
+<ResponseField name="taxNumber" type="string">
+  Tax registration number
+</ResponseField>
+
+<ResponseField name="businessAddress" type="string">
+  Business address
+</ResponseField>
+
+<ResponseField name="enableTax" type="boolean">
+  Whether tax is enabled
+</ResponseField>
+
+<ResponseField name="taxName" type="string">
+  Primary tax name (e.g., "Sales Tax")
+</ResponseField>
+
+<ResponseField name="taxRate" type="decimal">
+  Primary tax rate percentage
+</ResponseField>
+
+<ResponseField name="enableSecondaryTax" type="boolean">
+  Whether secondary tax is enabled
+</ResponseField>
+
+<ResponseField name="secondaryTaxName" type="string">
+  Secondary tax name
+</ResponseField>
+
+<ResponseField name="secondaryTaxRate" type="decimal">
+  Secondary tax rate percentage
+</ResponseField>
+
+<ResponseField name="enableTaxExemptions" type="boolean">
+  Whether tax exemptions are allowed
+</ResponseField>
+
+### Create or update tax settings
+
+Update tax configuration.
+
+```bash
+POST /api/tax-settings
+```
+
+### Request body
+
+<ParamField body="businessName" type="string" required>
+  Business name
+</ParamField>
+
+<ParamField body="taxNumber" type="string" required>
+  Tax registration number
+</ParamField>
+
+<ParamField body="businessAddress" type="string" required>
+  Business address
+</ParamField>
+
+<ParamField body="enableTax" type="boolean" default="true">
+  Enable tax
+</ParamField>
+
+<ParamField body="taxName" type="string" default="Sales Tax">
+  Primary tax name
+</ParamField>
+
+<ParamField body="taxRate" type="decimal" default="10">
+  Primary tax rate (%)
+</ParamField>
+
+<ParamField body="enableSecondaryTax" type="boolean" default="false">
+  Enable secondary tax
+</ParamField>
+
+<ParamField body="secondaryTaxName" type="string" default="Service Tax">
+  Secondary tax name
+</ParamField>
+
+<ParamField body="secondaryTaxRate" type="decimal" default="5">
+  Secondary tax rate (%)
+</ParamField>
+
+<ParamField body="enableTaxExemptions" type="boolean" default="false">
+  Allow tax exemptions
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/tax-settings" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin" \
+  -d '{
+    "businessName": "Acme Retail Store",
+    "taxNumber": "TAX-123456789",
+    "businessAddress": "123 Main Street, City, State 12345",
+    "enableTax": true,
+    "taxName": "Sales Tax",
+    "taxRate": 10,
+    "enableSecondaryTax": false,
+    "enableTaxExemptions": false
+  }'
+```
+
+### Calculate tax
+
+Calculate tax for a given subtotal.
+
+```bash
+POST /api/tax-settings/calculate
+```
+
+### Request body
+
+<ParamField body="subtotal" type="decimal" required>
+  Subtotal amount
+</ParamField>
+
+<ParamField body="isExempt" type="boolean">
+  Whether transaction is tax-exempt
+</ParamField>
+
+<ParamField body="discountAmount" type="decimal">
+  Discount amount to subtract
+</ParamField>
+
+### Response
+
+<ResponseField name="subtotal" type="decimal">
+  Input subtotal
+</ResponseField>
+
+<ResponseField name="taxType" type="string">
+  Tax type applied
+</ResponseField>
+
+<ResponseField name="taxRate" type="decimal">
+  Primary tax rate
+</ResponseField>
+
+<ResponseField name="taxAmount" type="decimal">
+  Primary tax amount
+</ResponseField>
+
+<ResponseField name="taxLabel" type="string">
+  Primary tax label
+</ResponseField>
+
+<ResponseField name="secondaryTaxRate" type="decimal">
+  Secondary tax rate (if enabled)
+</ResponseField>
+
+<ResponseField name="secondaryTaxAmount" type="decimal">
+  Secondary tax amount
+</ResponseField>
+
+<ResponseField name="secondaryTaxLabel" type="string">
+  Secondary tax label
+</ResponseField>
+
+<ResponseField name="total" type="decimal">
+  Final total after tax and discounts
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/tax-settings/calculate" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subtotal": 100.00,
+    "isExempt": false,
+    "discountAmount": 0
+  }'
+```
+
+### Example response
+
+```json
+{
+  "subtotal": 100.00,
+  "taxType": "Standard",
+  "taxRate": 10,
+  "taxAmount": 10.00,
+  "taxLabel": "Sales Tax (10%)",
+  "secondaryTaxRate": 0,
+  "secondaryTaxAmount": 0,
+  "total": 110.00
+}
+```
+
+## Admin settings
+
+### Get admin settings
+
+Retrieve administrative settings and system status.
+
+```bash
+GET /api/adminsettings
+```
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Settings ID
+</ResponseField>
+
+<ResponseField name="databaseStatus" type="string">
+  Database connection status
+</ResponseField>
+
+<ResponseField name="lastBackup" type="string">
+  Timestamp of last backup
+</ResponseField>
+
+<ResponseField name="requireStrongPins" type="boolean">
+  Require strong PIN policy
+</ResponseField>
+
+<ResponseField name="maxFailedLoginAttempts" type="integer">
+  Max failed login attempts
+</ResponseField>
+
+<ResponseField name="logLevel" type="string">
+  Logging level
+</ResponseField>
+
+<ResponseField name="performanceMetricsEnabled" type="boolean">
+  Performance monitoring enabled
+</ResponseField>
+
+### Update admin settings
+
+Update administrative configuration.
+
+```bash
+PUT /api/adminsettings
+```
+
+### Test database connection
+
+Test the database connection.
+
+```bash
+POST /api/adminsettings/test-connection
+```
+
+### Get backup capabilities
+
+Check backup system capabilities.
+
+```bash
+GET /api/adminsettings/backup/capabilities
+```
+
+### Create database backup
+
+Create a manual database backup.
+
+```bash
+POST /api/adminsettings/backup/create
+```
+
+### Get local backups
+
+List available local backups.
+
+```bash
+GET /api/adminsettings/backup/local
+```
+
+### Restore database backup
+
+Restore from a backup file.
+
+```bash
+POST /api/adminsettings/backup/restore
+```
+
+### Clear database
+
+Completely clear the database (use with caution).
+
+```bash
+POST /api/adminsettings/clear-database
+```
+
+<Warning>
+  This endpoint permanently deletes all data. Use only for development or when starting fresh.
+</Warning>
+
+### Get logs folder
+
+Get the path to the logs folder.
+
+```bash
+GET /api/adminsettings/logs/folder
+```
+
+### Get latest log file
+
+Get information about the most recent log file.
+
+```bash
+GET /api/adminsettings/logs/latest
+```

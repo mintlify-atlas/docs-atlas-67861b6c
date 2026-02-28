@@ -1,0 +1,231 @@
+---
+title: System settings
+description: Configure date formats, auto-logout, payment methods, and receipt settings
+---
+
+System settings control the core behavior of your BMS Point-of-Sale system, including regional preferences, session security, payment methods, and receipt printing.
+
+## Accessing system settings
+
+Navigate to **Manager Dashboard** → **System Settings** to configure these options. Manager role is required.
+
+<Note>
+  Changes to system settings take effect immediately after saving and apply to all active POS sessions.
+</Note>
+
+## Regional settings
+
+Configure how dates and numbers are displayed throughout the system.
+
+<ParamField path="dateFormat" type="string" default="MM/DD/YYYY">
+  Date format used throughout the system
+  
+  **Available options:**
+  - `MM/DD/YYYY` - US format (12/31/2024)
+  - `DD/MM/YYYY` - International format (31/12/2024)
+  - `YYYY-MM-DD` - ISO format (2024-12-31)
+</ParamField>
+
+<ParamField path="decimalSeparator" type="string" default=".">
+  Character used to separate decimal places in numbers
+</ParamField>
+
+<ParamField path="thousandsSeparator" type="string" default=",">
+  Character used to separate thousands in numbers
+</ParamField>
+
+## Session and security
+
+Control session timeout and security features.
+
+<ParamField path="autoLogoutMinutes" type="number" default="30">
+  Minutes of inactivity before automatic logout
+  
+  **Minimum:** 5 minutes for system stability
+</ParamField>
+
+<Warning>
+  Setting auto-logout too short may disrupt cashier workflow. Recommended minimum is 15 minutes for retail environments.
+</Warning>
+
+## Payment methods
+
+Configure which payment methods are available in the POS system.
+
+<ParamField path="availablePaymentMethods" type="string" default="Cash,Card,ETF/Digital">
+  Comma-separated list of payment methods available at checkout
+  
+  **Quick presets:**
+  - Standard: `Cash,Card,ETF/Digital`
+  - Cash Only: `Cash`
+  - Digital Only: `Card,ETF/Digital`
+</ParamField>
+
+<ParamField path="defaultPaymentMethod" type="string" default="Cash">
+  Payment method selected by default when processing transactions
+  
+  Must be one of the available payment methods configured above.
+</ParamField>
+
+## Transaction controls
+
+Security and approval settings for transactions.
+
+<ParamField path="requireManagerApprovalForDiscount" type="boolean" default="false">
+  When enabled, cashiers must enter a manager PIN to apply discounts
+</ParamField>
+
+<ParamField path="soundEffectsEnabled" type="boolean" default="true">
+  Enable audio feedback for button presses and successful transactions
+</ParamField>
+
+## Receipt content
+
+Customize the information displayed on customer receipts.
+
+<ParamField path="receiptHeaderText" type="string" optional>
+  Main header displayed at the top of receipts
+  
+  Example: `WELCOME TO BMS PET STORE`
+</ParamField>
+
+<Note>
+  Business name is managed separately in [Tax Settings](/configuration/tax-settings). The receipt header is for additional welcome messages or branding.
+</Note>
+
+<ParamField path="storeLocation" type="string" optional>
+  Store address or location identifier printed on receipts
+  
+  Example: `123 Main Street, City, State 12345`
+</ParamField>
+
+<ParamField path="phoneNumber" type="string" optional>
+  Store contact phone number printed on receipts
+  
+  Example: `+63 123 456 7890`
+</ParamField>
+
+<ParamField path="receiptFooterText" type="string" optional>
+  Message displayed at the bottom of receipts
+  
+  Example: `Thank you for your purchase! Visit us again soon.`
+</ParamField>
+
+## Printing configuration
+
+Control how receipts are formatted and printed.
+
+<ParamField path="receiptPaperSize" type="string" default="80mm">
+  Thermal receipt paper size
+  
+  **Fixed at 80mm** for optimal thermal printing. This setting cannot be changed.
+</ParamField>
+
+<ParamField path="receiptFontSize" type="string" default="Normal">
+  Font size for receipt text
+  
+  **Available options:**
+  - `Small` - Compact text, fits more content
+  - `Normal` - Standard readable size
+  - `Large` - Enhanced readability
+</ParamField>
+
+<ParamField path="receiptTemplateLayout" type="string" default="Standard">
+  Overall layout and detail level for receipts
+  
+  **Available layouts:**
+  - `Compact` - Minimal layout, fits more on small receipts
+  - `Standard` - Balanced layout with all essential info
+  - `Detailed` - Comprehensive layout with full product details
+  
+  Use the **Preview Template** button to see how each layout looks.
+</ParamField>
+
+<ParamField path="receiptCopies" type="number" default="1">
+  Number of receipt copies to print automatically
+</ParamField>
+
+<ParamField path="emailReceiptEnabled" type="boolean" default="false">
+  Enable the option to email receipts to customers
+</ParamField>
+
+<ParamField path="defaultReceiptEmail" type="string" optional>
+  Pre-filled email address for receipt delivery
+  
+  Only used when email receipts are enabled.
+</ParamField>
+
+## Printing options
+
+Control automatic printing behavior.
+
+<ParamField path="printReceiptAutomatically" type="boolean" default="true">
+  Automatically send receipts to printer after payment completion
+</ParamField>
+
+<ParamField path="showReceiptPreview" type="boolean" default="false">
+  Display receipt preview before sending to printer
+  
+  Useful for reviewing receipt accuracy before printing.
+</ParamField>
+
+<ParamField path="showReceiptBarcode" type="boolean" default="true">
+  Include transaction barcode on receipts for easy returns processing
+  
+  Recommended to keep enabled for streamlined return lookups.
+</ParamField>
+
+## Product management
+
+Configure product categories for inventory organization.
+
+<ParamField path="productCategories" type="string" default="Pet Food,Pet Toys,Pet Accessories,Pet Medicine,Pet Grooming,Pet Treats">
+  Comma-separated list of product categories available in inventory management
+  
+  **Quick presets:**
+  - Pet Store Comprehensive: `Pet Food,Pet Toys,Pet Accessories,Pet Medicine,Pet Grooming,Pet Treats,Pet Beds,Pet Carriers,Pet Collars & Leashes,Pet Bowls & Feeders`
+  - Pet Store Basic: `Pet Food,Pet Toys,Pet Accessories,Pet Medicine`
+  - Dog & Cat Focused: `Dog Food,Cat Food,Dog Toys,Cat Toys,Dog Accessories,Cat Accessories,Pet Medicine,Pet Treats`
+  - General Retail: `Food & Beverages,Electronics,Clothing,Home & Garden,Books,Toys & Games,Sports,Health & Beauty`
+</ParamField>
+
+<Note>
+  Consistent categories help with inventory organization, reporting, and finding products quickly during checkout.
+</Note>
+
+## API endpoint
+
+```http
+GET /api/settings/system
+POST /api/system-settings
+```
+
+**Example request:**
+
+```json
+{
+  "dateFormat": "MM/DD/YYYY",
+  "autoLogoutMinutes": 30,
+  "defaultPaymentMethod": "Cash",
+  "availablePaymentMethods": "Cash,Card,ETF/Digital",
+  "receiptHeaderText": "WELCOME TO BMS PET STORE",
+  "storeLocation": "123 Main St, City, State",
+  "phoneNumber": "+63 123 456 7890",
+  "receiptFooterText": "Thank you for your purchase!",
+  "printReceiptAutomatically": true,
+  "receiptCopies": 1,
+  "receiptPaperSize": "80mm",
+  "receiptFontSize": "Normal",
+  "receiptTemplateLayout": "Standard",
+  "showReceiptBarcode": true,
+  "requireManagerApprovalForDiscount": false,
+  "soundEffectsEnabled": true,
+  "productCategories": "Pet Food,Pet Toys,Pet Accessories"
+}
+```
+
+## Next steps
+
+- Configure [Tax settings](/configuration/tax-settings) for business information and tax rates
+- Customize [Receipt templates](/configuration/receipt-templates) for branded receipts
+- Review [Returns and refunds](/features/returns-refunds) settings for customer refunds

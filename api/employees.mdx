@@ -1,0 +1,295 @@
+---
+title: Employees
+description: Manage employee accounts and authentication in the BMS POS system
+---
+
+The Employees API provides endpoints for creating, updating, and managing employee accounts, including PIN authentication and role management.
+
+## Get all employees
+
+Retrieve a list of all employees in the system.
+
+```bash
+GET /api/employees
+```
+
+### Query parameters
+
+<ParamField query="includeInactive" type="boolean" default="false">
+  Include inactive employees in the results
+</ParamField>
+
+### Response
+
+Returns an array of employee objects.
+
+<ResponseField name="id" type="integer">
+  Unique employee identifier
+</ResponseField>
+
+<ResponseField name="employeeId" type="string">
+  Employee ID (max 10 characters)
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Employee full name (max 100 characters)
+</ResponseField>
+
+<ResponseField name="role" type="string">
+  Employee role: `Manager`, `Cashier`, or `Inventory`
+</ResponseField>
+
+<ResponseField name="isManager" type="boolean">
+  Legacy manager status flag
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the employee account is active
+</ResponseField>
+
+<ResponseField name="createdDate" type="string">
+  ISO 8601 timestamp of account creation
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/employees?includeInactive=false" \
+  -H "Content-Type: application/json"
+```
+
+### Example response
+
+```json
+[
+  {
+    "id": 1,
+    "employeeId": "EMP001",
+    "name": "John Doe",
+    "role": "Manager",
+    "isManager": true,
+    "isActive": true,
+    "createdDate": "2024-01-15T08:30:00Z"
+  },
+  {
+    "id": 2,
+    "employeeId": "EMP002",
+    "name": "Jane Smith",
+    "role": "Cashier",
+    "isManager": false,
+    "isActive": true,
+    "createdDate": "2024-01-16T09:15:00Z"
+  }
+]
+```
+
+## Get employee by ID
+
+Retrieve details of a specific employee.
+
+```bash
+GET /api/employees/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Employee ID
+</ParamField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/employees/1" \
+  -H "Content-Type: application/json"
+```
+
+### Response
+
+Returns a single employee object (same structure as above).
+
+## Create employee
+
+Create a new employee account with PIN authentication.
+
+```bash
+POST /api/employees
+```
+
+### Request body
+
+<ParamField body="employeeId" type="string" required>
+  Unique employee identifier (max 10 characters)
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Employee full name (max 100 characters)
+</ParamField>
+
+<ParamField body="pin" type="string" required>
+  6-digit numeric PIN for authentication (will be hashed)
+</ParamField>
+
+<ParamField body="role" type="string" required>
+  Employee role: `Manager`, `Cashier`, or `Inventory`
+</ParamField>
+
+<ParamField body="isActive" type="boolean" default="true">
+  Whether the account should be active
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/employees" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin" \
+  -d '{
+    "employeeId": "EMP003",
+    "name": "Bob Johnson",
+    "pin": "123456",
+    "role": "Cashier",
+    "isActive": true
+  }'
+```
+
+### Validation rules
+
+- Employee ID cannot be empty and must be unique
+- Name cannot be empty
+- PIN must be exactly 6 digits
+- PIN must contain only numbers
+- Role must be one of: `Manager`, `Cashier`, `Inventory`
+
+### Response
+
+Returns the created employee object with hashed PIN.
+
+## Update employee
+
+Update an existing employee's details.
+
+```bash
+PUT /api/employees/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Employee ID to update
+</ParamField>
+
+### Request body
+
+Same as create employee, but all fields are optional except `id` (which must match the path parameter).
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/employees/3" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin" \
+  -d '{
+    "id": 3,
+    "employeeId": "EMP003",
+    "name": "Bob Johnson",
+    "pin": "hashed_value",
+    "role": "Inventory",
+    "isActive": true
+  }'
+```
+
+## Deactivate employee
+
+Deactivate an employee account (soft delete).
+
+```bash
+PUT /api/employees/{id}/deactivate
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Employee ID to deactivate
+</ParamField>
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/employees/3/deactivate" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin"
+```
+
+## Activate employee
+
+Reactivate a previously deactivated employee account.
+
+```bash
+PUT /api/employees/{id}/activate
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Employee ID to activate
+</ParamField>
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/employees/3/activate" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin"
+```
+
+## Reset employee PIN
+
+Reset an employee's PIN for security purposes.
+
+```bash
+PUT /api/employees/{id}/reset-pin
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Employee ID
+</ParamField>
+
+### Request body
+
+<ParamField body="newPin" type="string" required>
+  New 6-digit numeric PIN
+</ParamField>
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/employees/3/reset-pin" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin" \
+  -d '{
+    "newPin": "654321"
+  }'
+```
+
+### Response
+
+```json
+{
+  "message": "PIN reset successfully"
+}
+```
+
+## Authentication headers
+
+All employee management endpoints log activity and require authentication headers:
+
+- `X-User-Id`: The ID of the user performing the action
+- `X-User-Name`: The name of the user performing the action
+
+These headers are used for audit logging in the user activity system.

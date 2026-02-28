@@ -1,80 +1,255 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart guide
+description: Complete your first sale transaction in under 5 minutes
 ---
 
-## Get started in three steps
+## Overview
 
-Get your documentation site running locally and make your first customization.
+This quickstart guide walks you through logging into the BMS POS system and completing your first sale transaction. By the end of this guide, you'll understand the basic workflow of the POS interface.
 
-### Step 1: Set up your local environment
+<Note>
+  **Prerequisites**: Ensure you have completed the [installation](/installation) steps and the system is running on `http://localhost:5002`
+</Note>
+
+## Login to the system
+
+<Steps>
+  <Step title="Navigate to the login screen">
+    When you launch the BMS POS application, you'll be presented with the login screen showing three role options:
+    - **Cashier** - Access to POS and basic functions
+    - **Inventory** - Access to inventory management
+    - **Manager** - Full system access including reports and settings
+
+    <Note>
+      For this quickstart, select **Manager** to access all features.
+    </Note>
+  </Step>
+
+  <Step title="Enter your credentials">
+    Use the default credentials to log in:
+
+    ```text
+    Employee ID: 0001
+    PIN: 1234
+    Role: Manager
+    ```
+
+    1. Click on the **Employee ID** field (or it will be selected by default)
+    2. Use the on-screen keypad to enter `0001`
+    3. Click on the **PIN** field
+    4. Use the on-screen keypad to enter `1234`
+    5. Click the blue **Sign In** button
+
+    <Warning>
+      Change the default PIN after your first login for security purposes. Navigate to **Manager Dashboard → Employees** to update your PIN.
+    </Warning>
+  </Step>
+
+  <Step title="Access the Manager Dashboard">
+    Upon successful login, you'll be redirected to the Manager Dashboard. This is your central hub with quick access to:
+    - **Point of Sale** - Process sales transactions
+    - **Sales History** - View past transactions
+    - **Inventory** - Manage products and stock
+    - **Reports** - View business analytics
+    - **Settings** - Configure system options
+  </Step>
+</Steps>
+
+## Make your first sale
+
+<Steps>
+  <Step title="Open the POS interface">
+    From the Manager Dashboard, click the **Point of Sale** button to open the POS interface.
+
+    The POS screen has two main sections:
+    - **Left side**: Product catalog with search functionality
+    - **Right side**: Shopping cart and payment controls
+  </Step>
+
+  <Step title="Add products to the cart">
+    You can add products to the cart in three ways:
+
+    **Method 1: Click product cards**
+    - Browse the product grid on the left
+    - Click any product card to add it to the cart
+    - Click again to increase quantity
+
+    **Method 2: Search for products**
+    - Click the search bar at the top
+    - Type a product name, barcode, brand, or category
+    - Click the matching product to add it
+
+    **Method 3: Scan barcodes**
+    - Connect a USB barcode scanner (optional)
+    - Scan product barcodes to instantly add them to the cart
+
+    <Note>
+      Products display stock levels. Items marked **OUT OF STOCK** cannot be added, and **LOW STOCK** items show a warning.
+    </Note>
+  </Step>
+
+  <Step title="Review the cart">
+    On the right side, review your cart:
+    - Each line shows: Product name, price per unit, quantity, and line total
+    - Click the quantity to edit it manually
+    - Click the **×** button to remove an item
+    - The bottom shows:
+      - **Subtotal**: Total before tax
+      - **Sales Tax**: Automatically calculated (default 10%)
+      - **Total**: Final amount due
+
+    <Tip>
+      The tax rate can be configured in **Settings → Tax Settings**. You can also enable secondary taxes or tax exemptions.
+    </Tip>
+  </Step>
+
+  <Step title="Process payment">
+    1. Click the green **Pay** button at the bottom right
+    2. A payment modal appears showing the order summary
+    3. Select a payment method from the dropdown:
+       - Cash
+       - Card
+       - ETF/Digital
+    4. Enter the amount paid (use the on-screen keyboard for touch displays)
+    5. The system automatically calculates change
+    6. Click **Complete Payment** when ready
+
+    <Note>
+      **Manager Discounts**: Managers can apply discounts (10%, 20%, 30%, 40%, 50%) before payment. If system settings require manager approval, cashiers must enter a manager PIN.
+    </Note>
+  </Step>
+
+  <Step title="View the receipt">
+    After completing payment:
+    - A receipt preview appears (if enabled in system settings)
+    - Review the transaction details
+    - Choose to:
+      - **Print Receipt** - Send to connected thermal printer
+      - **Skip Print** - Complete without printing
+      - **Back** - Return to payment screen
+
+    The transaction is saved with a unique ID format: `TXN-YYYYMMDD-XXXXXXXX`
+  </Step>
+</Steps>
+
+## Post-sale actions
+
+### View sales history
+
+Navigate to **Sales History** from the dashboard to:
+- View all completed transactions
+- Filter by date range
+- Search by transaction ID
+- View detailed receipts for past sales
+- Process returns/refunds
+
+**API Endpoint**: `GET /api/sales` (src: `BMS_POS_API/Controllers/SalesController.cs:22`)
+
+### Check inventory updates
+
+After each sale, product stock is automatically decremented:
+
+```csharp
+// Automatic inventory update on sale
+product.StockQuantity -= item.Quantity;
+product.LastUpdated = currentTime;
+```
+
+(src: `BMS_POS_API/Controllers/SalesController.cs:133-134`)
+
+### Review reports
+
+Access the **Reports** section to view:
+- Daily sales summary
+- Top-selling products
+- Employee performance
+- Payment method breakdown
+- Tax collection summary
+
+## Common workflows
+
+<CardGroup cols={2}>
+  <Card title="Process a return" icon="arrow-rotate-left">
+    Navigate to **Returns** → Enter transaction ID → Select items to return → Process refund
+  </Card>
+  
+  <Card title="Restock inventory" icon="boxes-stacked">
+    Go to **Inventory** → Select product → Click **Adjust Stock** → Enter new quantity → Save
+  </Card>
+  
+  <Card title="Add new products" icon="plus">
+    Open **Inventory** → Click **Add Product** → Fill in details (name, barcode, price, stock) → Save
+  </Card>
+  
+  <Card title="Manage employees" icon="users">
+    Navigate to **Employees** → Add/edit employee records → Assign roles → Set PINs
+  </Card>
+</CardGroup>
+
+## Keyboard shortcuts
+
+The POS interface supports barcode scanners and keyboard input:
+
+- **Barcode scanner**: Automatically detected and adds products instantly
+- **Enter key**: Completes payment when amount is sufficient
+- **Escape key**: Closes modals and keyboards
+
+## Troubleshooting
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Login fails with 'Employee not found'">
+    - Verify you entered `0001` (four digits with leading zeros)
+    - Check that the API is running on `http://localhost:5002`
+    - Test API health: `curl http://localhost:5002/health`
+    - Review API logs in the terminal
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion title="Products don't appear in the POS">
+    - Ensure products exist in the database (check **Inventory** section)
+    - Verify products are marked as **Active** (inactive products are hidden)
+    - Check the browser console for API errors (F12)
+  </Accordion>
+
+  <Accordion title="Payment button is disabled">
+    - Cart must contain at least one item
+    - Amount paid must be greater than or equal to the total
+    - Check for insufficient stock errors
+  </Accordion>
+
+  <Accordion title="Barcode scanner not working">
+    - Ensure scanner is in USB HID keyboard mode
+    - Test scanner in a text editor (should type characters)
+    - Check Electron keyboard event listeners in `src/frontend/components/POS.tsx:182-218`
   </Accordion>
 </AccordionGroup>
 
-### Step 2: Deploy your changes
+## Session management
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+The BMS POS includes automatic session management:
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+- **Auto-logout**: Sessions expire after inactivity (configurable)
+- **Session extension**: Activity extends the session automatically
+- **Secure PINs**: All PINs are hashed using BCrypt for security
+- **Activity logging**: All actions are logged with user, timestamp, and IP
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+(src: `src/frontend/utils/SessionManager.ts`)
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Architecture" icon="sitemap" href="/architecture">
+    Learn about the system architecture and how components work together
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference">
+    Explore all available API endpoints and data models
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/configuration">
+    Configure system settings, taxes, payment methods, and more
+  </Card>
+  
+  <Card title="User Management" icon="user-shield" href="/user-management">
+    Set up employees, roles, and permissions
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

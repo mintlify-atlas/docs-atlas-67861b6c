@@ -1,0 +1,549 @@
+---
+title: Inventory management
+description: Comprehensive product catalog management with barcode scanning, UPC database integration, and stock tracking
+---
+
+## Overview
+
+The inventory management system provides complete control over your product catalog, including adding/editing products, barcode scanning, automatic UPC database lookups, stock level tracking, and low stock alerts.
+
+<CardGroup cols={2}>
+  <Card title="Barcode scanning" icon="barcode">
+    Fast product lookup and creation with barcode scanner support
+  </Card>
+  <Card title="UPC database integration" icon="database">
+    Automatic product information from UPC Item Database
+  </Card>
+  <Card title="Stock level tracking" icon="boxes-stacked">
+    Real-time inventory counts with low stock alerts
+  </Card>
+  <Card title="Category management" icon="folder-tree">
+    Organize products with customizable categories
+  </Card>
+</CardGroup>
+
+## Product catalog
+
+### Product information
+
+Each product includes:
+
+- **Barcode** (required) - Unique identifier, UPC/EAN/SKU
+- **Name** (required) - Product display name
+- **Variant/Size** (optional) - e.g., "500ml", "Large", "16GB"
+- **Brand** (optional) - Manufacturer or brand name
+- **Category** (optional) - Product classification
+- **Quantity** (required) - Current stock level
+- **Low stock alert** (required) - Minimum quantity threshold
+- **Cost price** (required) - Wholesale/purchase cost
+- **Selling price** (required) - Retail price
+- **Image URL** (optional) - Product image from UPC database or custom URL
+- **Unit** (default: "pcs") - Unit of measurement
+- **Status** (default: active) - Active products appear in POS
+
+### Product grid view
+
+Products are displayed in a responsive grid with:
+
+- **2-5 column layout** - Adapts to screen size (mobile to desktop)
+- **Product images** - Display from URL or show placeholder
+- **Click to view** - Full product details in modal
+- **Hover actions** - Edit button appears on hover
+- **Color-coded status**:
+  - Red text: Out of stock (quantity = 0)
+  - Orange text: Low stock (quantity ≤ minimum stock level)
+  - Normal: Adequate stock
+
+### Search and filtering
+
+**Search bar** filters products by:
+- Product name
+- Barcode
+- Brand
+- Category
+
+**Category dropdown** filters by selected category (configured in System Settings).
+
+**Results counter** shows: "X products" (filtered count).
+
+## Adding products
+
+<Steps>
+  <Step title="Enter barcode">
+    Scan or manually type the product barcode. The barcode field accepts:
+    - UPC codes (12 digits)
+    - EAN codes (13 digits)
+    - Custom SKUs (any length ≥5 characters)
+  </Step>
+  
+  <Step title="Search UPC database (optional)">
+    Click "Find" to search for the product in the UPC Item Database. If found:
+    - Product name is auto-filled
+    - Brand is populated
+    - Category is suggested
+    - Variant/size is detected
+    - Product image is downloaded
+    
+    If not found locally, the system automatically queries the UPC database.
+  </Step>
+  
+  <Step title="Fill in product details">
+    Complete required fields:
+    - **Product name** - What customers will see
+    - **Quantity** - Initial stock count
+    - **Cost price** - Your purchase cost
+    - **Selling price** - Retail price to customers
+    - **Low stock alert** - Reorder threshold (default: 5)
+  </Step>
+  
+  <Step title="Add optional information">
+    Enhance product details:
+    - **Variant/Size** - Helps distinguish similar products
+    - **Brand** - Useful for filtering and search
+    - **Category** - Select from pre-configured categories
+  </Step>
+  
+  <Step title="Review image preview">
+    If UPC database found an image, it will appear in the preview. The image will be saved with the product.
+  </Step>
+  
+  <Step title="Click 'Add'">
+    Save the new product to the catalog. It will immediately appear in the POS.
+  </Step>
+</Steps>
+
+### API endpoint
+
+**Create product**: `POST /api/products`
+
+```json
+{
+  "barcode": "012345678912",
+  "name": "Coca-Cola",
+  "variant": "500ml",
+  "brand": "Coca-Cola Company",
+  "category": "Beverages",
+  "stockQuantity": 100,
+  "minStockLevel": 20,
+  "cost": 0.75,
+  "price": 1.50,
+  "unit": "pcs",
+  "isActive": true,
+  "imageUrl": "https://example.com/image.jpg"
+}
+```
+
+## Editing products
+
+<Steps>
+  <Step title="Find the product">
+    Use search or scroll to locate the product in the grid.
+  </Step>
+  
+  <Step title="Click 'Edit' or select product">
+    Hover over the product card and click "Edit", or click the product to view details then click "Edit Product".
+  </Step>
+  
+  <Step title="Modify fields">
+    Update any field except the barcode. Changes to stock quantity are tracked in user activity logs.
+  </Step>
+  
+  <Step title="Click 'Save Changes'">
+    The product is updated and changes are logged. The system tracks:
+    - What changed (field by field)
+    - Who made the change (from session)
+    - When the change occurred
+    - Significant price changes (>20%) are flagged
+  </Step>
+</Steps>
+
+### API endpoint
+
+**Update product**: `PUT /api/products/{id}`
+
+```json
+{
+  "id": 123,
+  "barcode": "012345678912",
+  "name": "Coca-Cola",
+  "variant": "500ml",
+  "brand": "Coca-Cola Company",
+  "category": "Beverages",
+  "stockQuantity": 85,
+  "minStockLevel": 20,
+  "cost": 0.75,
+  "price": 1.50,
+  "unit": "pcs",
+  "isActive": true,
+  "imageUrl": "https://example.com/image.jpg",
+  "createdDate": "2026-01-15T10:30:00Z",
+  "lastUpdated": "2026-02-28T14:25:00Z"
+}
+```
+
+## Deleting products
+
+<Steps>
+  <Step title="Select product">
+    Click the product to load it into the edit form.
+  </Step>
+  
+  <Step title="Click 'Delete'">
+    A confirmation dialog appears.
+  </Step>
+  
+  <Step title="Confirm deletion">
+    Click "OK" to permanently delete the product from the database. This action cannot be undone.
+  </Step>
+</Steps>
+
+<Warning>
+  **Permanent deletion**: Products are hard-deleted from the database, not just marked inactive. Historical sales records will still reference the product by name/barcode, but the product itself is removed.
+</Warning>
+
+### API endpoint
+
+**Delete product**: `DELETE /api/products/{id}`
+
+## Barcode scanning
+
+### Scanner detection
+
+The system automatically detects barcode scanner input:
+
+1. Scanner sends rapid keystrokes (barcode digits)
+2. Scanner sends Enter key at the end
+3. System buffers keystrokes within 100ms window
+4. When buffer reaches ≥5 characters, barcode search is triggered
+
+**Compatible scanners**: Any USB barcode scanner configured in USB-HID keyboard mode.
+
+### Barcode search workflow
+
+<Steps>
+  <Step title="Scan barcode">
+    Use barcode scanner to input product barcode into the barcode field.
+  </Step>
+  
+  <Step title="Local database search">
+    System searches for product: `GET /api/products/barcode/{barcode}`
+    
+    If found, product is loaded into the edit form for viewing/editing.
+  </Step>
+  
+  <Step title="UPC database fallback">
+    If not found locally, system queries UPC Item Database API:
+    
+    `GET https://api.upcitemdb.com/prod/trial/lookup?upc={barcode}`
+    
+    If found, product information is pre-filled in the add form.
+  </Step>
+  
+  <Step title="Manual entry">
+    If not found in either database, barcode remains in the field for manual product entry.
+  </Step>
+</Steps>
+
+## UPC database integration
+
+### Automatic product information
+
+When a barcode is not found locally, the system queries the UPC Item Database to retrieve:
+
+- **Product title** → Name
+- **Brand name** → Brand
+- **Product size** → Variant
+- **Category** → Category
+- **Product images** → Image URL
+
+### Image selection logic
+
+The system intelligently selects product images:
+
+1. **Filter reliable sources** - Prefers images from:
+   - walmart.com
+   - amazon.com
+   - target.com
+   - walgreens.com
+
+2. **Exclude broken URLs** - Skips URLs containing:
+   - `spin_prod_ec_` (known placeholder images)
+   - `rpx/i/s/i/spin` (broken image patterns)
+
+3. **Prefer HTTPS** - Uses secure image URLs when available
+
+4. **Fallback** - Uses first available HTTPS image if no reliable sources found
+
+### UPC database limitations
+
+- **Trial API** - Free tier has rate limits (100 requests/day)
+- **Coverage** - Not all barcodes are in the database
+- **Accuracy** - Product information may be incomplete or outdated
+- **Images** - Some image URLs may expire or break over time
+
+<Tip>
+  Consider upgrading to UPC Item Database paid plan for higher rate limits and better coverage in production environments.
+</Tip>
+
+## Stock level management
+
+### Current stock
+
+The "Quantity" field shows current available stock. This number:
+- Decreases automatically when sales are processed
+- Increases automatically when returns are restocked
+- Can be manually adjusted in the edit form
+
+### Low stock alerts
+
+The "Low Stock Alert" threshold triggers visual warnings when:
+
+```javascript
+stockQuantity <= minStockLevel
+```
+
+Products below this threshold are highlighted in:
+- Inventory grid (orange text)
+- POS product grid (orange "LOW STOCK" banner)
+- Dashboard low stock report
+
+### Stock adjustments
+
+To manually adjust stock:
+
+1. Edit the product
+2. Change the "Quantity" field
+3. Click "Save Changes"
+
+The adjustment is logged with:
+- User who made the change
+- Old quantity → New quantity
+- Change amount (+/-)
+- Timestamp
+
+### API endpoint
+
+**Update stock**: `PUT /api/products/{id}/stock`
+
+```json
+{
+  "newQuantity": 75,
+  "reason": "Physical inventory count"
+}
+```
+
+## Low stock products
+
+View all products below minimum stock level:
+
+**API endpoint**: `GET /api/products/low-stock`
+
+**Response**:
+```json
+[
+  {
+    "id": 123,
+    "name": "Coca-Cola 500ml",
+    "barcode": "012345678912",
+    "stockQuantity": 8,
+    "minStockLevel": 20,
+    "price": 1.50
+  }
+]
+```
+
+This endpoint is used by:
+- Dashboard alerts
+- Inventory reports
+- Reorder notifications
+
+## Category management
+
+### Configuring categories
+
+Product categories are configured in:
+
+**System Settings → Product Categories**
+
+Enter comma-separated category names:
+```
+Beverages, Snacks, Dairy, Frozen Foods, Household, Personal Care
+```
+
+### Using categories
+
+**In inventory management**:
+- Select category from dropdown when adding/editing products
+- Filter product grid by category
+
+**In POS**:
+- Search products by category
+- Filter product grid by category (future enhancement)
+
+**In reports**:
+- Group sales by product category
+- Analyze category performance
+
+## Product images
+
+### Image sources
+
+1. **UPC Database** - Automatically downloaded during barcode search
+2. **Manual URL** - Enter image URL directly (not currently exposed in UI)
+3. **Upload** - Not yet implemented
+
+### Image display
+
+**In inventory grid**:
+- Thumbnail size: 72px height
+- Fallback: "Image" placeholder text
+- Object-fit: contain (preserves aspect ratio)
+
+**In POS grid**:
+- Thumbnail size: 88px height
+- Fallback: "Image" placeholder text
+- Lazy loading for performance
+
+**In product detail modal**:
+- Full size: 192px height
+- Fallback: "No Image Available" message
+
+### Image URL validation
+
+The system performs client-side validation:
+- Tests image loading with `onLoad` event
+- Falls back to placeholder on `onError` event
+- Logs loading failures to console for debugging
+
+## API endpoints
+
+Complete inventory management API:
+
+| Endpoint | Method | Purpose |
+|----------|--------|----------|
+| `/api/products` | GET | List all active products |
+| `/api/products/{id}` | GET | Get single product details |
+| `/api/products/barcode/{barcode}` | GET | Search by barcode |
+| `/api/products/low-stock` | GET | List low stock products |
+| `/api/products` | POST | Create new product |
+| `/api/products/{id}` | PUT | Update product |
+| `/api/products/{id}/stock` | PUT | Adjust stock quantity |
+| `/api/products/{id}` | DELETE | Delete product |
+
+## Inventory reports
+
+### Stock value calculation
+
+```javascript
+totalInventoryValue = Σ(product.stockQuantity × product.cost)
+```
+
+### Potential revenue
+
+```javascript
+potentialRevenue = Σ(product.stockQuantity × product.price)
+```
+
+### Profit margin per product
+
+```javascript
+margin = ((price - cost) / price) × 100
+```
+
+Example: ($1.50 - $0.75) / $1.50 = 50% margin
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="For inventory managers">
+    - Scan barcodes instead of typing to reduce errors
+    - Set realistic low stock alert thresholds based on sales velocity
+    - Regularly review low stock reports to avoid stockouts
+    - Use variants to distinguish similar products (e.g., sizes, flavors)
+    - Keep product images up-to-date for better POS experience
+    - Assign categories consistently for accurate reporting
+  </Accordion>
+  
+  <Accordion title="For system administrators">
+    - Configure product categories before first use
+    - Test barcode scanner with various product types
+    - Monitor UPC database API usage to avoid rate limits
+    - Back up product database regularly
+    - Review user activity logs for unauthorized stock adjustments
+    - Set up low stock email alerts (future enhancement)
+  </Accordion>
+  
+  <Accordion title="For store managers">
+    - Audit physical inventory monthly and adjust quantities
+    - Investigate discrepancies between system and physical counts
+    - Train staff on proper barcode scanning technique
+    - Review profit margins regularly and adjust pricing
+    - Monitor category performance to optimize product mix
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Barcode scanner not working in inventory">
+    **Symptoms**: Scanned barcodes don't appear in barcode field
+    
+    **Solutions**:
+    - Click in the barcode input field first
+    - Verify scanner is not in sleep mode
+    - Check USB connection is secure
+    - Test scanner in a text editor
+    - Ensure scanner sends Enter key after barcode
+  </Accordion>
+  
+  <Accordion title="UPC database returns no results">
+    **Symptoms**: Click "Find" but product info doesn't populate
+    
+    **Solutions**:
+    - Verify barcode format is correct (12-13 digits for UPC/EAN)
+    - Check internet connectivity
+    - Try manual search at upcitemdb.com to verify barcode exists
+    - Some products may not be in UPC database - add manually
+    - Check browser console for API errors
+  </Accordion>
+  
+  <Accordion title="Product images not displaying">
+    **Symptoms**: "Image" placeholder shown instead of product photo
+    
+    **Solutions**:
+    - Check image URL is valid and accessible
+    - Verify CORS headers allow image loading
+    - Test image URL in browser address bar
+    - Try different image URL from UPC database
+    - Check browser console for CORS/404 errors
+  </Accordion>
+  
+  <Accordion title="Stock quantities incorrect after sales">
+    **Symptoms**: Physical count doesn't match system quantity
+    
+    **Solutions**:
+    - Review recent sales in Sales History
+    - Check for manual stock adjustments in User Activity logs
+    - Verify all sales were processed through POS (not external)
+    - Look for failed transactions that may have partially updated stock
+    - Perform physical inventory count and adjust as needed
+  </Accordion>
+  
+  <Accordion title="Cannot edit or delete products">
+    **Symptoms**: "Save" button disabled or delete fails
+    
+    **Solutions**:
+    - Verify you have Inventory or Manager role permissions
+    - Check product is selected (blue border on card)
+    - Ensure all required fields are filled
+    - Check for validation errors (barcode already exists, etc.)
+    - Try refreshing the page and re-selecting product
+  </Accordion>
+</AccordionGroup>
+
+## Related documentation
+
+- [Sales processing](/features/sales-processing) - How inventory affects POS
+- [System settings](/configuration/system-settings) - Configure categories and stock alerts
+- [User activity](/api/user-activity) - Audit stock adjustments
+- [Reports and analytics](/advanced/reports-analytics) - Inventory value and low stock reports

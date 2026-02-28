@@ -1,0 +1,143 @@
+---
+title: API overview
+description: Introduction to the BMS Point-of-Sale System REST API
+---
+
+The BMS Point-of-Sale System provides a RESTful API for managing sales transactions, inventory, employees, and system settings. The API is built with ASP.NET Core and uses PostgreSQL (Supabase) as its database.
+
+## Base URL
+
+All API requests should be made to:
+
+```
+http://localhost:5002
+```
+
+<Note>
+The API is configured to run on port 5002 by default. Ensure the API server is running before making requests.
+</Note>
+
+## API documentation
+
+Interactive API documentation is available through Swagger UI when running in development mode:
+
+```
+http://localhost:5002/swagger
+```
+
+Swagger UI provides a complete reference of all available endpoints, request/response schemas, and the ability to test API calls directly from your browser.
+
+## CORS configuration
+
+The API is configured with a permissive CORS policy called "ElectronPolicy" to support the Electron frontend application:
+
+- **Allowed Origins**: Any origin
+- **Allowed Methods**: Any HTTP method
+- **Allowed Headers**: Any header
+
+<Note>
+This CORS configuration is intended for local development. Consider restricting origins in production environments.
+</Note>
+
+## Health checks
+
+The API provides health check endpoints for monitoring system status:
+
+### General health
+
+```bash
+GET /health
+```
+
+Returns the overall health status of the API and database connection.
+
+### Readiness check
+
+```bash
+GET /health/ready
+```
+
+Returns readiness status for services tagged as "ready".
+
+### Liveness check
+
+```bash
+GET /health/live
+```
+
+Returns liveness status indicating the API is running.
+
+## Response format
+
+All API responses follow a consistent format using the `ApiResponse<T>` wrapper:
+
+### Success response
+
+```json
+{
+  "success": true,
+  "data": {
+    // Response data
+  },
+  "message": "Operation successful"
+}
+```
+
+### Error response
+
+```json
+{
+  "success": false,
+  "message": "Error description",
+  "errorCode": "ERROR_CODE",
+  "errors": [
+    "Detailed error message 1",
+    "Detailed error message 2"
+  ]
+}
+```
+
+## Features
+
+### Logging and monitoring
+
+The API includes comprehensive logging using Serilog:
+
+- **Console logging**: Real-time logs in the terminal
+- **File logging**: JSON-formatted logs in `logs/comprehensive-{date}.json`
+- **Request logging**: All HTTP requests are logged via `RequestLoggingMiddleware`
+- **Global exception handling**: Centralized error handling via `GlobalExceptionMiddleware`
+
+### Database migrations
+
+The API automatically applies Entity Framework migrations on startup, ensuring the database schema is always up to date.
+
+### Static file serving
+
+The API serves static files from the `uploads` directory at `/uploads/*`. This is used for product images and other uploaded content.
+
+<Note>
+The uploads directory is automatically created if it doesn't exist when the API starts.
+</Note>
+
+## Key services
+
+The API includes several core services:
+
+- **User Activity Service**: Tracks all user actions and maintains an audit log
+- **PIN Security Service**: Handles PIN hashing and verification with automatic migration from legacy plaintext PINs
+- **Metrics Service**: Collects business intelligence metrics for analytics
+- **Supabase Backup Service**: Manages database backups to Supabase
+- **Secure Configuration Service**: Handles secure environment variable management
+
+## Default credentials
+
+On first run, the API creates a default manager account:
+
+- **Employee ID**: 0001
+- **PIN**: 1234
+- **Role**: Manager
+
+<Note>
+Change the default PIN immediately after first login for security purposes.
+</Note>

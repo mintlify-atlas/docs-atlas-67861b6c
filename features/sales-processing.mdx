@@ -1,0 +1,471 @@
+---
+title: Sales processing
+description: Complete POS workflow for processing customer transactions with multiple payment methods
+---
+
+## Overview
+
+The sales processing module is the core of the BMS POS system, providing a fast and intuitive interface for cashiers to process customer transactions. The system supports barcode scanning, manual product search, multiple payment methods, tax calculations, and receipt generation.
+
+<CardGroup cols={2}>
+  <Card title="Quick transactions" icon="bolt">
+    Fast barcode scanning with real-time inventory validation
+  </Card>
+  <Card title="Multiple payment methods" icon="credit-card">
+    Support for Cash, Card, ETF/Digital, and custom payment types
+  </Card>
+  <Card title="Tax management" icon="calculator">
+    Automatic tax calculations with support for primary and secondary taxes
+  </Card>
+  <Card title="Receipt printing" icon="receipt">
+    Optional receipt preview and thermal printer support
+  </Card>
+</CardGroup>
+
+## POS workflow
+
+<Steps>
+  <Step title="Login and start session">
+    Cashiers log in using their Employee ID and PIN. The system tracks session time and automatically logs out after inactivity.
+  </Step>
+  
+  <Step title="Add products to cart">
+    Products can be added by:
+    - Scanning barcodes with a barcode scanner
+    - Searching by product name, barcode, brand, or category
+    - Clicking product cards in the grid view
+    
+    The system validates stock availability in real-time and prevents overselling.
+  </Step>
+  
+  <Step title="Adjust quantities">
+    Click the quantity input in the cart to edit quantities using the on-screen keyboard. The system prevents quantities exceeding available stock.
+  </Step>
+  
+  <Step title="Apply discounts (manager only)">
+    Managers can apply percentage-based discounts (10%, 20%, 30%, 40%, 50%) with optional reasons. If configured, cashiers can request manager approval by entering a manager PIN.
+  </Step>
+  
+  <Step title="Select payment method">
+    Choose from available payment methods configured in System Settings:
+    - Cash
+    - Card
+    - ETF/Digital
+    - Custom payment methods
+  </Step>
+  
+  <Step title="Enter amount paid">
+    Enter the amount received from the customer. The system automatically calculates change and validates that payment is sufficient.
+  </Step>
+  
+  <Step title="Complete sale">
+    Click "Complete Payment" to process the transaction. The system:
+    - Validates payment amount
+    - Deducts inventory quantities
+    - Generates a unique transaction ID
+    - Records the sale with timestamp and employee details
+    - Updates low stock alerts
+  </Step>
+  
+  <Step title="Print receipt (optional)">
+    If receipt preview is enabled, review the receipt and choose to:
+    - Print to thermal printer
+    - Skip printing
+    - Return to payment screen to make changes
+  </Step>
+</Steps>
+
+## Product display
+
+Products are displayed in a responsive grid with:
+
+- **Product image** - from UPC database or custom URL
+- **Product name** - with overflow truncation
+- **Price** - formatted in local currency
+- **Stock status** - color-coded indicators:
+  - Red "OUT OF STOCK" banner - cannot be added to cart
+  - Orange "LOW STOCK" banner - quantity below minimum stock level
+  - Blue quantity badge - items currently in cart
+
+### Barcode scanning
+
+The system automatically detects barcode scanner input by monitoring rapid keystrokes. When a barcode is scanned:
+
+1. Product is instantly looked up by barcode (via `GET /api/products/barcode/{barcode}`)
+2. If found, product is added to cart with quantity 1
+3. If not found, an alert is displayed
+4. Stock validation prevents adding out-of-stock items
+
+**Scanner compatibility**: Works with USB barcode scanners configured to send Enter after scanning.
+
+## Cart management
+
+### Add to cart
+
+When adding products, the system:
+- Checks if product already exists in cart
+- Validates available stock quantity
+- Increments quantity if already in cart
+- Shows alert if attempting to exceed stock
+
+### Modify quantities
+
+Click the quantity input field to open the numeric keyboard. The system:
+- Validates new quantity against stock
+- Updates line total automatically
+- Removes item if quantity is set to 0
+
+### Remove items
+
+Click the × button on any cart item to remove it completely.
+
+### Clear cart
+
+The "Clear Cart" button removes all items and resets discounts.
+
+## Tax calculations
+
+The system supports flexible tax configurations:
+
+### Primary tax
+
+```javascript
+taxAmount = (subtotal * taxRate) / 100
+```
+
+Example: $100 subtotal × 10% = $10 tax
+
+### Secondary tax
+
+If enabled, a second tax is calculated on the subtotal:
+
+```javascript
+secondaryTaxAmount = (subtotal * secondaryTaxRate) / 100
+```
+
+Example: $100 subtotal × 5% = $5 service tax
+
+### Tax exemptions
+
+If tax exemptions are enabled, managers can toggle "Tax Exempt Sale" to process tax-free transactions.
+
+### Final total calculation
+
+```javascript
+totalBeforeDiscount = subtotal + taxAmount + secondaryTaxAmount
+discountAmount = (totalBeforeDiscount * discountPercent) / 100
+finalTotal = totalBeforeDiscount - discountAmount
+```
+
+## Payment processing
+
+### Payment methods
+
+Available payment methods are configured in System Settings. Common options:
+
+- **Cash** - Default method, calculates change
+- **Card** - Credit/debit card payments
+- **ETF/Digital** - Electronic fund transfers, digital wallets
+- **Custom** - Add your own payment methods
+
+### Manager approval for discounts
+
+If "Require Manager Approval for Discounts" is enabled in System Settings:
+
+1. Cashier selects discount percentage
+2. System prompts for manager PIN
+3. Manager PIN is validated via `electronAPI.validateManagerPin()`
+4. If valid, discount is applied and reason is requested
+5. If invalid, discount is rejected
+
+### Payment validation
+
+Before processing:
+- Cart must not be empty
+- Amount paid must be ≥ final total
+- Payment method must be selected
+
+### Sale recording
+
+Successful sales are stored with:
+
+```json
+{
+  "employeeId": 123,
+  "subtotal": 100.00,
+  "taxRate": 10.0,
+  "taxAmount": 11.50,
+  "discountAmount": 0.00,
+  "discountReason": null,
+  "total": 111.50,
+  "amountPaid": 120.00,
+  "change": 8.50,
+  "paymentMethod": "Cash",
+  "items": [
+    {
+      "productId": 456,
+      "quantity": 2,
+      "unitPrice": 50.00,
+      "lineTotal": 100.00
+    }
+  ]
+}
+```
+
+**API Endpoint**: `POST /api/sales`
+
+## Receipt generation
+
+### Receipt preview
+
+If "Show Receipt Preview" is enabled in System Settings, the receipt preview modal displays:
+
+- Business name and details
+- Transaction ID (last 8 digits displayed)
+- Sale date and time
+- Cashier name
+- Itemized list with quantities and prices
+- Subtotal, taxes, discounts
+- Total amount, payment method
+- Amount paid and change
+
+### Printing options
+
+<CardGroup cols={3}>
+  <Card title="Print receipt" icon="print">
+    Sends receipt to configured thermal printer via Electron IPC
+  </Card>
+  <Card title="Skip printing" icon="forward">
+    Completes transaction without printing
+  </Card>
+  <Card title="Back to payment" icon="arrow-left">
+    Returns to payment screen to make adjustments
+  </Card>
+</CardGroup>
+
+### Receipt format
+
+Receipts are generated as plain text using the `generateTextReceipt()` utility, which formats:
+
+- Business logo (if configured)
+- Center-aligned headers
+- Fixed-width columns for item details
+- Right-aligned currency values
+- Separator lines between sections
+
+**Thermal printer compatibility**: Supports ESC/POS compatible thermal printers (58mm or 80mm width).
+
+## Session management
+
+The POS screen includes automatic session tracking:
+
+- **Session timeout** - Configured in System Settings (default: 15 minutes)
+- **Business action extension** - Completing a sale extends session by 5 minutes
+- **Session indicator** - Top-right corner shows remaining time
+- **Auto-logout** - Users are logged out after inactivity period
+
+## API endpoints
+
+The sales processing module interacts with these API endpoints:
+
+| Endpoint | Method | Purpose |
+|----------|--------|----------|
+| `/api/products` | GET | Load active products |
+| `/api/products/barcode/{barcode}` | GET | Search product by barcode |
+| `/api/tax-settings` | GET | Load tax configuration |
+| `/api/system-settings` | GET | Load system settings |
+| `/api/sales` | POST | Create new sale transaction |
+
+## Stock validation
+
+### Real-time inventory checks
+
+The system performs inventory validation at multiple points:
+
+**When adding to cart**:
+```javascript
+if (product.stockQuantity <= 0) {
+  alert(`${product.name} is out of stock.`)
+  return
+}
+
+if (existingQuantity + 1 > product.stockQuantity) {
+  alert(`Cannot add more. Only ${product.stockQuantity} available.`)
+  return
+}
+```
+
+**During sale processing**:
+- Backend validates stock availability
+- Prevents race conditions with database-level checks
+- Returns error if insufficient stock
+
+**After sale completion**:
+- Stock quantities are decremented atomically
+- Product `LastUpdated` timestamp is updated
+- Low stock alerts are triggered automatically
+
+### Out of stock handling
+
+Products with zero stock:
+- Display red "OUT OF STOCK" banner
+- Are grayed out in product grid
+- Cannot be clicked or added to cart
+- Do not respond to barcode scans
+
+### Low stock warnings
+
+Products at or below minimum stock level:
+- Display orange "LOW STOCK" banner
+- Remain available for purchase
+- Are highlighted for reordering attention
+- Can still be added to cart normally
+
+## UI features
+
+### Search and filtering
+
+The search bar filters products by:
+- Product name
+- Barcode
+- Brand
+- Category
+
+Search is real-time and case-insensitive.
+
+### Touch screen support
+
+The interface is optimized for touch screens:
+- Large, tappable product cards
+- On-screen keyboard for text/numeric input
+- Touch-friendly buttons and controls
+- Responsive grid layout adapts to screen size
+
+### Keyboard shortcuts
+
+While no explicit shortcuts are defined, the system:
+- Detects rapid barcode scanner input automatically
+- Ignores keyboard input when modal keyboard is open
+- Prevents interference with regular typing
+
+## Error handling
+
+### Common scenarios
+
+**Product not found**:
+```
+Product with barcode "123456" not found
+```
+
+**Insufficient stock**:
+```
+Cannot add more [Product Name]. 
+Only [X] available in stock.
+```
+
+**Insufficient payment**:
+```
+Insufficient payment amount
+```
+
+**Empty cart**:
+```
+Cart is empty
+```
+
+**Payment processing error**:
+```
+Failed to process payment
+[Error message from API]
+```
+
+### Recovery actions
+
+If a sale fails:
+1. Error message is displayed to user
+2. Cart remains intact (not cleared)
+3. User can adjust and retry
+4. Inventory quantities are not affected
+5. No partial transactions are created
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="For cashiers">
+    - Scan barcodes efficiently - the system detects rapid scanner input automatically
+    - Verify quantities before completing payment
+    - Double-check payment amount and change calculation
+    - Use Clear Cart to start fresh if customer changes their mind
+    - Watch for low stock warnings to alert managers
+  </Accordion>
+  
+  <Accordion title="For managers">
+    - Configure available payment methods in System Settings
+    - Set up tax rates before first use
+    - Enable manager approval for discounts to control markdown abuse
+    - Configure receipt preview to reduce paper waste
+    - Monitor session timeout settings for security vs convenience balance
+  </Accordion>
+  
+  <Accordion title="For system administrators">
+    - Test barcode scanner configuration before deployment
+    - Configure thermal printer settings in Electron main process
+    - Set up UPC database for automatic product information
+    - Enable receipt preview for training purposes
+    - Configure appropriate session timeouts based on store traffic
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Barcode scanner not working">
+    **Symptoms**: Scanning barcodes doesn't add products to cart
+    
+    **Solutions**:
+    - Verify scanner is configured to send Enter key after barcode
+    - Check USB connection is secure
+    - Test scanner in a text editor to verify output
+    - Ensure minimum barcode length is 5 characters
+    - Check scanner is in USB-HID keyboard mode
+  </Accordion>
+  
+  <Accordion title="Products not loading">
+    **Symptoms**: "Loading products..." message persists
+    
+    **Solutions**:
+    - Check API connection: `GET /api/products`
+    - Verify database is running and accessible
+    - Check browser console for JavaScript errors
+    - Ensure at least one product exists with `isActive = true`
+  </Accordion>
+  
+  <Accordion title="Receipt printer not responding">
+    **Symptoms**: "Print Receipt" completes but nothing prints
+    
+    **Solutions**:
+    - Verify printer is powered on and connected
+    - Check USB/network connection to printer
+    - Test printer with OS print dialog
+    - Verify Electron IPC handler is properly configured
+    - Check printer paper is loaded and not jammed
+  </Accordion>
+  
+  <Accordion title="Tax calculations incorrect">
+    **Symptoms**: Tax amounts don't match expected values
+    
+    **Solutions**:
+    - Verify tax rates in System Settings → Tax Settings
+    - Check if secondary tax is enabled when not needed
+    - Ensure tax exemption toggle is in correct state
+    - Review calculation: tax = (subtotal × rate) / 100
+    - Check for floating-point rounding issues
+  </Accordion>
+</AccordionGroup>
+
+## Related documentation
+
+- [Inventory management](/features/inventory-management) - Managing product catalog
+- [System settings](/configuration/system-settings) - Configuring POS behavior
+- [Tax settings](/configuration/tax-settings) - Tax calculation rules
+- [Employee management](/features/employee-management) - User accounts and permissions

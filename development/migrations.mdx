@@ -1,0 +1,373 @@
+---
+title: Migrations
+description: Entity Framework Core migrations workflow for database schema management
+---
+
+The BMS POS system uses Entity Framework Core migrations to manage database schema changes. Migrations are automatically applied on application startup.
+
+## How migrations work
+
+Entity Framework Core migrations provide a way to incrementally update the database schema to keep it in sync with your data model while preserving existing data.
+
+### Auto-migration on startup
+
+The API automatically applies pending migrations when it starts. This is configured in `Program.cs`:
+
+```csharp
+// Auto-migration on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<BmsPosDbContext>();
+    db.Database.Migrate();
+}
+```
+
+This means you don't need to manually run migrations in production - they're applied automatically when the API starts.
+
+## Creating a new migration
+
+When you add or modify a model in the `Models/` directory, you need to create a migration to update the database schema.
+
+### 1. Navigate to the API project
+
+```bash
+cd BMS_POS_API
+```
+
+### 2. Create the migration
+
+```bash
+dotnet ef migrations add MigrationName
+```
+
+Replace `MigrationName` with a descriptive name that explains what the migration does. Use PascalCase naming.
+
+**Examples:**
+- `AddUserActivityTable`
+- `AddIsActiveToEmployee`
+- `UpdateTaxSettings`
+- `RemoveUnusedSystemSettingsColumns`
+
+### 3. Review the migration
+
+Entity Framework will generate a new file in `Migrations/` with an `Up()` method (applies changes) and a `Down()` method (reverts changes).
+
+Review the generated code to ensure it correctly represents your intended changes.
+
+### 4. Apply the migration
+
+The migration will be automatically applied when you start the API. You can also apply it manually:
+
+```bash
+dotnet ef database update
+```
+
+## Common migration commands
+
+### List all migrations
+
+View all migrations and their status:
+
+```bash
+dotnet ef migrations list
+```
+
+### Apply migrations
+
+Apply all pending migrations:
+
+```bash
+dotnet ef database update
+```
+
+### Revert to a specific migration
+
+Rollback to a previous migration:
+
+```bash
+dotnet ef database update MigrationName
+```
+
+### Remove the last migration
+
+If you haven't applied the migration yet and want to delete it:
+
+```bash
+dotnet ef migrations remove
+```
+
+**Warning:** Only use this if the migration hasn't been applied to any database.
+
+### Generate SQL script
+
+Generate a SQL script for all migrations without applying them:
+
+```bash
+dotnet ef migrations script
+```
+
+Generate SQL for a specific migration range:
+
+```bash
+dotnet ef migrations script FromMigration ToMigration
+```
+
+## Development workflow
+
+### Adding a new feature
+
+Follow these steps when adding a new feature that requires database changes:
+
+1. **Create model** in `BMS_POS_API/Models/`
+2. **Add DbSet** to `BmsPosDbContext.cs`
+3. **Create migration**:
+   ```bash
+   cd BMS_POS_API
+   dotnet ef migrations add FeatureName
+   ```
+4. **Create controller** in `BMS_POS_API/Controllers/`
+5. **Add React component** in `src/frontend/components/`
+6. **Add route** to `App.tsx`
+
+### Modifying an existing model
+
+1. **Update the model** class in `Models/`
+2. **Create migration**:
+   ```bash
+   dotnet ef migrations add UpdateModelName
+   ```
+3. **Test the migration** locally before committing
+4. **Update any affected controllers** or services
+
+## Migration naming conventions
+
+Use clear, descriptive names that explain what the migration does:
+
+### Good names
+- `AddUserActivityTable` - Adding a new table
+- `AddEmailToEmployee` - Adding a column
+- `RemoveObsoleteFields` - Removing columns
+- `UpdateProductPriceType` - Changing column types
+- `AddIndexToProductBarcode` - Adding indexes
+- `RenameCustomerToClient` - Renaming entities
+
+### Avoid
+- `Update1`, `Fix2`, `Changes` - Not descriptive
+- `NewMigration`, `Test` - Too generic
+- `temp`, `wip` - Should never be committed
+
+## Migration history
+
+The system maintains a complete migration history in the `Migrations/` directory. Current migrations include:
+
+- `InitialCreate` - Initial database schema
+- `AddEmployeeRole` - Role-based access control
+- `AddSalesAndSaleItems` - Sales transaction tables
+- `AddTaxSettings` - Tax configuration
+- `AddSystemSettings` - System-wide settings
+- `AddReturnsSystem` - Returns and refunds functionality
+- `AddUserActivityTable` - Audit logging
+- `InventoryFeatures` - Advanced inventory management
+- `AddIsActiveToEmployee` - Employee activation status
+- `IncreasePinFieldLength` - Support for BCrypt hashes
+- `AddAdminSettings` - Administrative settings
+
+## Troubleshooting
+
+<Accordion title="Migration fails with constraint errors">
+If a migration fails due to foreign key constraints:
+
+1. Check that all required relationships are defined in the models
+2. Ensure foreign key columns are nullable if the relationship is optional
+3. Review the migration's `Up()` method for the correct order of operations
+4. Consider adding data migration logic to populate required foreign keys
+
+**Example fix:**
+```csharp
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    // First create the table without foreign key
+    migrationBuilder.CreateTable(
+        name: "child_table",
+        columns: table => new
+        {
+            id = table.Column<int>(nullable: false),
+            parent_id = table.Column<int>(nullable: true)
+        });
+    
+    // Then add the foreign key constraint
+    migrationBuilder.AddForeignKey(
+        name: "FK_child_parent",
+        table: "child_table",
+        column: "parent_id",
+        principalTable: "parent_table",
+        principalColumn: "id",
+        onDelete: ReferentialAction.Restrict);
+}
+```
+</Accordion>
+
+<Accordion title="Cannot remove migration that's been applied">
+If you need to revert a migration that's already been applied:
+
+1. **Rollback to previous migration:**
+   ```bash
+   dotnet ef database update PreviousMigrationName
+   ```
+
+2. **Remove the migration file:**
+   ```bash
+   dotnet ef migrations remove
+   ```
+
+3. **Make your changes** and create a new migration
+
+**Important:** Never modify a migration that's been applied to production.
+</Accordion>
+
+<Accordion title="Entity Framework tools not found">
+If you see "No executable found matching command 'dotnet-ef'":
+
+**Install EF Core tools globally:**
+```bash
+dotnet tool install --global dotnet-ef
+```
+
+**Update to latest version:**
+```bash
+dotnet tool update --global dotnet-ef
+```
+
+**Verify installation:**
+```bash
+dotnet ef --version
+```
+</Accordion>
+
+<Accordion title="Connection string issues">
+If migrations can't connect to the database:
+
+1. **Verify environment variables:**
+   ```bash
+   cat .env
+   ```
+
+2. **Check connection string format:**
+   ```
+   Host=your_host;Port=5432;Database=postgres;Username=your_user;Password=your_password;SSL Mode=Require
+   ```
+
+3. **Test connection manually:**
+   ```bash
+   psql -h your_host -U your_user -d postgres
+   ```
+
+4. **Ensure `.env` file is in the correct location** (project root, not BMS_POS_API/)
+</Accordion>
+
+<Accordion title="Migration generates unexpected changes">
+If a migration includes changes you didn't make:
+
+1. **Check for uncommitted model changes:**
+   ```bash
+   git status Models/
+   ```
+
+2. **Review the migration diff:**
+   ```bash
+   git diff Migrations/
+   ```
+
+3. **Verify your DbContext configuration** in `BmsPosDbContext.cs`
+
+4. **Remove and recreate the migration** if necessary:
+   ```bash
+   dotnet ef migrations remove
+   dotnet ef migrations add MigrationName
+   ```
+</Accordion>
+
+<Accordion title="Database is out of sync with migrations">
+If your local database doesn't match the migration history:
+
+1. **Check which migrations are applied:**
+   ```bash
+   dotnet ef migrations list
+   ```
+
+2. **Apply all pending migrations:**
+   ```bash
+   dotnet ef database update
+   ```
+
+3. **If database is corrupted, reset it:**
+   ```bash
+   # Drop all tables (careful - this deletes all data)
+   dotnet ef database drop
+   
+   # Recreate from migrations
+   dotnet ef database update
+   ```
+
+4. **For production, always backup first:**
+   ```bash
+   pg_dump -h your_host -U your_user -d postgres > backup.sql
+   ```
+</Accordion>
+
+## Best practices
+
+### Do
+
+- Create migrations with descriptive names
+- Test migrations locally before committing
+- Review generated migration code
+- Keep migrations small and focused
+- Commit migrations with the related code changes
+- Back up production databases before applying migrations
+
+### Don't
+
+- Modify migrations after they're applied to production
+- Delete migration files from version control
+- Skip reviewing auto-generated migration code
+- Create migrations without testing them
+- Commit migrations separately from model changes
+- Apply untested migrations to production
+
+## Production considerations
+
+### Automatic migration on startup
+
+The system automatically applies pending migrations when the API starts. This is convenient for development but requires careful consideration for production:
+
+**Advantages:**
+- No manual migration steps required
+- Ensures database is always up-to-date
+- Works well with containerized deployments
+
+**Considerations:**
+- Large migrations may delay application startup
+- Failed migrations will prevent application from starting
+- Multiple instances may try to migrate simultaneously
+
+### Alternative: Manual migrations
+
+For production environments, you may prefer to apply migrations manually:
+
+1. **Comment out auto-migration** in `Program.cs`
+2. **Apply migrations before deployment:**
+   ```bash
+   dotnet ef database update --connection "your_connection_string"
+   ```
+3. **Deploy the application** after migrations succeed
+
+### Zero-downtime migrations
+
+For critical production systems, follow these steps for zero-downtime migrations:
+
+1. **Make changes backward-compatible** (e.g., add nullable columns)
+2. **Deploy application** that works with both old and new schema
+3. **Apply migration** to add new columns/tables
+4. **Deploy application** that uses new schema
+5. **Apply cleanup migration** to remove old columns (if needed)

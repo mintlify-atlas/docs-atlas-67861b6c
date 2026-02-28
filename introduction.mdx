@@ -1,0 +1,143 @@
+---
+title: Welcome to BMS Point-of-Sale System
+description: A comprehensive, full-stack Point-of-Sale system with advanced inventory, sales, and employee management features, built with Electron and .NET 8
+---
+
+# Welcome to BMS Point-of-Sale System
+
+A modern, full-featured Point-of-Sale system designed for retail operations with advanced inventory tracking, sales management, and employee controls. Built with Electron.js and .NET 8, BMS POS combines the power of desktop applications with enterprise-grade backend infrastructure.
+
+<Note>
+  **Development Status**: This project is currently under active development. Features and functionality may change as development progresses.
+</Note>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Fast installation" icon="rocket" href="/installation">
+    Get up and running in minutes with Node.js, .NET 8, and PostgreSQL
+  </Card>
+  
+  <Card title="Quick start guide" icon="bolt" href="/quickstart">
+    Complete your first sale transaction in under 5 minutes
+  </Card>
+  
+  <Card title="System architecture" icon="diagram-project" href="/architecture">
+    Learn about the Electron + React + .NET + PostgreSQL stack
+  </Card>
+  
+  <Card title="API reference" icon="code" href="/api-reference">
+    Explore 11+ REST API endpoints for integration
+  </Card>
+</CardGroup>
+
+## Core capabilities
+
+### Point-of-sale operations
+- **PIN-based authentication** with role-based access control (Manager/Cashier/Inventory)
+- **Multi-item transactions** with automatic tax calculation and change computation
+- **Multiple payment methods** including Cash, Card, and Digital/EFT
+- **Receipt generation** with customizable templates and auto-print options
+- **Barcode scanning** for rapid product lookup
+
+### Inventory management
+- **Product catalog** with full CRUD operations, pricing, and categories
+- **Batch tracking** with lot numbers, expiration dates, and supplier information
+- **Stock adjustments** with complete audit trails
+- **Inventory counts** supporting full, cycle, spot, and annual count types
+- **Low stock alerts** with configurable minimum thresholds
+- **Expiration monitoring** with automatic status updates
+
+### Business intelligence
+- **Sales analytics** with daily, weekly, and monthly summaries
+- **Top products** reporting by quantity and revenue
+- **Payment analysis** breakdown by payment method
+- **Tax reports** for compliance and accounting
+- **Employee performance** metrics and tracking
+
+### Administration
+- **Employee management** with PIN reset and role assignment
+- **System configuration** including date formats, auto-logout, and payment methods
+- **Tax settings** with primary and secondary tax rate support
+- **Receipt customization** with flexible templates and paper size options
+- **Audit logging** capturing all user activities with timestamps
+- **Multi-display support** for dual-monitor and touch-screen setups
+
+## Technology stack
+
+<CardGroup cols={2}>
+  <Card title="Frontend" icon="desktop">
+    React 19 + TypeScript + Vite + Tailwind CSS + Electron 37
+  </Card>
+  
+  <Card title="Backend" icon="server">
+    .NET 8 + Entity Framework Core 9 + ASP.NET Core
+  </Card>
+  
+  <Card title="Database" icon="database">
+    PostgreSQL 13+ via Supabase with real-time capabilities
+  </Card>
+  
+  <Card title="Security" icon="shield">
+    BCrypt PIN hashing + Role-based access + SSL/TLS
+  </Card>
+</CardGroup>
+
+## Why BMS POS?
+
+**Separation of concerns** - Clean architecture with distinct frontend, backend, and database layers
+
+**Type safety** - TypeScript on the frontend and C# on the backend eliminate entire classes of runtime errors
+
+**Hot reload** - Vite provides instant feedback during development with sub-second refresh times
+
+**Structured logging** - Serilog outputs JSON logs for easy analysis and monitoring
+
+**Real-time updates** - Supabase enables live data synchronization across multiple terminals
+
+**Cross-platform** - Electron enables Windows, macOS, and Linux support from a single codebase
+
+**Offline-ready** - Desktop application works without internet when API is hosted locally
+
+## Default credentials
+
+The system automatically creates a default manager account on first run:
+
+- **Employee ID**: `0001`
+- **PIN**: `1234`
+- **Role**: Manager
+
+<Warning>
+  Change the default PIN immediately after your first login for security purposes.
+</Warning>
+
+## Next steps
+
+<Steps>
+  <Step title="Install dependencies">
+    Follow the [installation guide](/installation) to set up Node.js, .NET 8, and PostgreSQL
+  </Step>
+  
+  <Step title="Configure environment">
+    Create your `.env` file with database credentials and connection settings
+  </Step>
+  
+  <Step title="Start development">
+    Run the development script to launch all services and complete your first sale
+  </Step>
+  
+  <Step title="Explore features">
+    Learn about inventory management, reporting, and administration capabilities
+  </Step>
+</Steps>
+
+## Support and documentation
+
+- **API Documentation**: Access Swagger UI at `/swagger` endpoint in development mode
+- **Health Check**: Monitor system status at `/health` endpoint
+- **Logs**: View structured logs in `logs/comprehensive-{date}.json`
+- **GitHub**: Report issues and contribute at the project repository
+
+---
+
+**Ready to get started?** Head over to the [installation guide](/installation) to set up your development environment.

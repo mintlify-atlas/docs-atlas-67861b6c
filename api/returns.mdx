@@ -1,0 +1,264 @@
+---
+title: Returns
+description: Process product returns and refunds in the BMS POS system
+---
+
+The Returns API handles product return transactions with manager approval workflows and automatic inventory restocking.
+
+## Get all returns
+
+Retrieve all return transactions.
+
+```bash
+GET /api/returns
+```
+
+### Response
+
+Returns an array of return objects with full details.
+
+<ResponseField name="id" type="integer">
+  Unique return identifier
+</ResponseField>
+
+<ResponseField name="returnId" type="string">
+  Unique return ID (format: RET-YYYYMMDD-XXXXXXXX)
+</ResponseField>
+
+<ResponseField name="originalSaleId" type="integer">
+  ID of the original sale
+</ResponseField>
+
+<ResponseField name="returnDate" type="string">
+  ISO 8601 timestamp of return
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Return status (Completed, Pending, Cancelled)
+</ResponseField>
+
+<ResponseField name="totalRefundAmount" type="decimal">
+  Total refund amount
+</ResponseField>
+
+<ResponseField name="processedByEmployeeId" type="integer">
+  Employee who processed the return
+</ResponseField>
+
+<ResponseField name="approvedByEmployeeId" type="integer">
+  Manager who approved the return (if required)
+</ResponseField>
+
+<ResponseField name="managerApprovalRequired" type="boolean">
+  Whether manager approval was required
+</ResponseField>
+
+<ResponseField name="notes" type="string">
+  Additional notes
+</ResponseField>
+
+<ResponseField name="returnItems" type="array">
+  Array of returned items
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/returns" \
+  -H "Content-Type: application/json"
+```
+
+## Get return by ID
+
+Retrieve details of a specific return.
+
+```bash
+GET /api/returns/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Return ID
+</ParamField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/returns/1" \
+  -H "Content-Type: application/json"
+```
+
+## Process return
+
+Create a new return transaction.
+
+```bash
+POST /api/returns
+```
+
+### Request body
+
+<ParamField body="originalSaleId" type="integer" required>
+  ID of the original sale
+</ParamField>
+
+<ParamField body="processedByEmployeeId" type="integer" required>
+  Employee processing the return
+</ParamField>
+
+<ParamField body="managerPin" type="string">
+  Manager PIN for approval (required if approval is needed)
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes about the return
+</ParamField>
+
+<ParamField body="returnItems" type="array" required>
+  Array of items being returned
+</ParamField>
+
+### Return item structure
+
+<ParamField body="originalSaleItemId" type="integer" required>
+  ID of the original sale item
+</ParamField>
+
+<ParamField body="returnQuantity" type="integer" required>
+  Quantity being returned
+</ParamField>
+
+<ParamField body="lineTotal" type="decimal" required>
+  Refund amount for this item
+</ParamField>
+
+<ParamField body="condition" type="string" default="good">
+  Item condition: `good` or `defective`
+</ParamField>
+
+<ParamField body="reason" type="string" required>
+  Reason for return
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/returns" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 2" \
+  -H "X-User-Name: Cashier" \
+  -d '{
+    "originalSaleId": 123,
+    "processedByEmployeeId": 2,
+    "managerPin": "123456",
+    "notes": "Customer not satisfied with product quality",
+    "returnItems": [
+      {
+        "originalSaleItemId": 456,
+        "returnQuantity": 1,
+        "lineTotal": 24.99,
+        "condition": "good",
+        "reason": "Customer changed mind"
+      }
+    ]
+  }'
+```
+
+### Return validation
+
+The system validates:
+
+- Original sale exists
+- Return time limit (if configured in system settings)
+- Return quantity doesn't exceed available quantity
+- No duplicate returns for the same items
+- Manager approval requirements based on amount
+
+### Manager approval
+
+Manager approval is required when:
+
+- System setting `RequireManagerApprovalForReturns` is enabled
+- Return amount exceeds `ReturnManagerApprovalAmount` threshold
+
+### Inventory restocking
+
+If system setting `RestockReturnedItems` is enabled and item condition is `good`, the product quantity is automatically increased.
+
+### Response
+
+```json
+{
+  "id": 1,
+  "returnId": "RET-20240228-A1B2C3D4",
+  "originalSaleId": 123,
+  "returnDate": "2024-02-28T14:30:00Z",
+  "status": "Completed",
+  "totalRefundAmount": 24.99,
+  "processedByEmployeeId": 2,
+  "approvedByEmployeeId": 1,
+  "managerApprovalRequired": true,
+  "notes": "Customer not satisfied with product quality",
+  "returnItems": [
+    {
+      "id": 1,
+      "originalSaleItemId": 456,
+      "productId": 5,
+      "productName": "Premium Coffee Beans",
+      "returnQuantity": 1,
+      "unitPrice": 24.99,
+      "lineTotal": 24.99,
+      "condition": "good",
+      "reason": "Customer changed mind",
+      "restockedToInventory": true
+    }
+  ]
+}
+```
+
+## Error handling
+
+The returns endpoint provides detailed error messages:
+
+### Return period expired
+
+```json
+{
+  "error": "Return period expired. Returns allowed within 30 days."
+}
+```
+
+### Insufficient quantity
+
+```json
+{
+  "error": "Cannot return 2 of Premium Coffee Beans. Only 1 available to return (originally bought 1, already returned 0)."
+}
+```
+
+### Manager PIN required
+
+```json
+{
+  "error": "Manager PIN is required for this return amount."
+}
+```
+
+### Invalid manager PIN
+
+```json
+{
+  "error": "Invalid manager PIN. Please verify the PIN and try again."
+}
+```
+
+## System settings integration
+
+The returns system respects these system settings:
+
+- `EnableReturns`: Master toggle for returns functionality
+- `ReturnTimeLimitDays`: Maximum days after sale to allow returns
+- `RequireManagerApprovalForReturns`: Require approval for all returns
+- `ReturnManagerApprovalAmount`: Minimum amount requiring approval
+- `RestockReturnedItems`: Automatically restock items in good condition

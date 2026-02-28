@@ -1,0 +1,540 @@
+---
+title: Best practices
+description: Security recommendations and best practices for deploying and operating BMS POS
+---
+
+Follow these security best practices to protect your BMS POS installation and business data.
+
+## Environment configuration
+
+Proper environment configuration is critical for securing sensitive credentials and connection strings.
+
+### Environment variables
+
+Store all sensitive configuration in environment variables, never in source code:
+
+```bash
+# Required environment variables
+export BMS_DB_USER="your_database_username"
+export BMS_DB_PASSWORD="your_secure_password"
+export BMS_DB_SERVER="your_database_server"
+export BMS_DB_PORT="5432"
+export BMS_DB_NAME="postgres"
+```
+
+**Required variables:**
+
+| Variable | Description | Example |
+|----------|-------------|--------|
+| `BMS_DB_USER` | Database username | `postgres.example123` |
+| `BMS_DB_PASSWORD` | Database password | `[secure password]` |
+| `BMS_DB_SERVER` | Database server hostname | `aws-1-ap-southeast-1.pooler.supabase.com` |
+| `BMS_DB_PORT` | Database port | `5432` |
+| `BMS_DB_NAME` | Database name | `postgres` |
+
+<Warning>
+Never commit the `.env` file to version control. The `.env` file should always be listed in `.gitignore`.
+</Warning>
+
+### Initial setup
+
+When deploying BMS POS:
+
+1. **Copy the environment template:**
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Configure all required variables** with production values
+
+3. **Restrict file permissions** (Linux/Mac):
+   ```bash
+   chmod 600 .env
+   ```
+
+4. **Verify configuration** is not exposed:
+   ```bash
+   # Ensure .env is in .gitignore
+   git check-ignore .env
+   ```
+
+### Connection string security
+
+The `SecureConfigurationService` processes connection strings by replacing placeholders with environment variables:
+
+```csharp SecureConfigurationService.cs:22-50
+public string ProcessConnectionString(string connectionString)
+{
+    if (string.IsNullOrEmpty(connectionString))
+        return connectionString;
+
+    var processed = connectionString;
+
+    foreach (var mapping in _environmentMappings)
+    {
+        var placeholder = mapping.Key;
+        var envVarName = mapping.Value;
+        var envValue = Environment.GetEnvironmentVariable(envVarName);
+
+        if (!string.IsNullOrEmpty(envValue))
+        {
+            processed = processed.Replace(placeholder, envValue);
+        }
+        else if (processed.Contains(placeholder))
+        {
+            // Only warn if connection string actually contains placeholders
+            Console.WriteLine($"Warning: Environment variable '{envVarName}' not found. Using placeholder value.");
+        }
+    }
+
+    return processed;
+}
+```
+
+This ensures database credentials are never hardcoded in configuration files.
+
+## Database security
+
+Protect your database with multiple layers of security.
+
+### Connection security
+
+**Use SSL/TLS connections:**
+
+- Enable SSL in your database server configuration
+- Use connection strings with SSL mode enabled
+- Verify SSL certificates to prevent man-in-the-middle attacks
+
+**PostgreSQL/Supabase SSL example:**
+
+```
+Server={{DB_SERVER}};Port={{DB_PORT}};Database={{DB_NAME}};User Id={{DB_USER}};Password={{DB_PASSWORD}};SSL Mode=Require;Trust Server Certificate=false;
+```
+
+### Credential management
+
+**Strong passwords:**
+
+- Use passwords at least 16 characters long
+- Include uppercase, lowercase, numbers, and symbols
+- Avoid dictionary words and common patterns
+- Use a password manager to generate and store credentials
+
+**Access control:**
+
+- Create dedicated database user for BMS POS application
+- Grant only necessary permissions (SELECT, INSERT, UPDATE, DELETE)
+- Avoid using superuser accounts for application connections
+- Regularly rotate database passwords
+
+### SQL injection prevention
+
+BMS POS uses parameterized queries throughout to prevent SQL injection:
+
+```csharp
+// Secure parameterized query example
+var employee = await _context.Employees
+    .FirstOrDefaultAsync(e => e.EmployeeId == request.EmployeeId && e.IsActive);
+```
+
+<Note>
+Entity Framework Core automatically uses parameterized queries, providing protection against SQL injection attacks.
+</Note>
+
+## PIN security
+
+Employee PINs are the primary authentication mechanism and must be properly secured.
+
+### PIN requirements
+
+**Recommended PIN policies:**
+
+- Minimum length: 4 digits
+- Recommended length: 6 digits
+- Avoid sequential numbers (1234, 5678)
+- Avoid repeated digits (1111, 9999)
+- Avoid birth dates and other personal information
+- Change PINs periodically (every 90 days for managers)
+
+### BCrypt configuration
+
+BMS POS uses BCrypt with a work factor of 12:
+
+```csharp PinSecurityService.cs:14
+private const int WorkFactor = 12; // BCrypt work factor (cost)
+```
+
+**Work factor considerations:**
+
+- Work factor 12 provides strong security for 2024+
+- Higher work factors increase computation time
+- Balance security with user experience (login speed)
+- Consider increasing work factor as hardware improves
+
+<Warning>
+BCrypt's work factor of 12 means each PIN verification takes approximately 0.1-0.3 seconds. This intentional delay makes brute-force attacks computationally expensive.
+</Warning>
+
+### Legacy PIN migration
+
+If migrating from a system with plaintext PINs:
+
+1. **Automatic upgrade** occurs on first login:
+   ```csharp AuthController.cs:193-204
+   if (_pinSecurityService.IsLegacyPin(storedPin))
+   {
+       // Legacy plaintext comparison
+       bool isValid = storedPin == providedPin;
+       
+       // If valid, upgrade to hashed PIN in background
+       if (isValid)
+       {
+           _ = Task.Run(async () => await UpgradeLegacyPinAsync(storedPin, providedPin));
+       }
+       
+       return isValid;
+   }
+   ```
+
+2. **Monitor migration progress** through audit logs
+
+3. **Verify all PINs upgraded** before removing legacy support
+
+## Session management
+
+Secure session handling prevents unauthorized access and session hijacking.
+
+### Session storage
+
+**Current implementation:**
+
+- Sessions stored in browser localStorage
+- Appropriate for desktop kiosk deployment model
+- Relies on physical device security
+
+**Security considerations:**
+
+- localStorage persists across browser restarts
+- Data accessible to JavaScript on same origin
+- Not suitable for shared or untrusted devices
+
+<Note>
+BMS POS assumes physical device security in kiosk mode. For multi-user workstations, implement additional session isolation.
+</Note>
+
+### Auto-logout
+
+Implement automatic logout after inactivity:
+
+- Configurable timeout period (default: 15-30 minutes)
+- Warn user before logout
+- Clear session data on logout
+- Require re-authentication to resume
+
+### Session validation
+
+Validate sessions on every request:
+
+- Check session token validity
+- Verify user still has active account
+- Confirm role permissions haven't changed
+- Log suspicious session activity
+
+## Physical security
+
+The desktop application security model assumes physical device security.
+
+### Device security
+
+**Essential measures:**
+
+- Keep POS terminals in secure, supervised areas
+- Lock devices when unattended
+- Use cable locks for hardware theft prevention
+- Enable BIOS/firmware passwords
+- Configure auto-lock on inactivity
+
+**Advanced measures:**
+
+- Full disk encryption (BitLocker, LUKS)
+- Trusted Platform Module (TPM) for key storage
+- Secure boot configuration
+- Disable unnecessary USB ports
+- Physical intrusion detection
+
+### Access control
+
+**Terminal access:**
+
+- Limit who can access POS terminals physically
+- Supervise training sessions with production systems
+- Log all physical access to server rooms
+- Use security cameras in POS areas
+
+**After-hours security:**
+
+- Power down or lock terminals when closed
+- Store backup devices in locked cabinets
+- Implement alarm systems
+- Document device inventory regularly
+
+## Network security
+
+### Localhost communication
+
+<Note>
+BMS POS uses localhost communication between Electron frontend and .NET backend. No network encryption is provided as traffic doesn't leave the device.
+</Note>
+
+**Network isolation:**
+
+- Backend API binds only to localhost (127.0.0.1)
+- Not accessible from network
+- Prevents remote attacks
+- Suitable for single-device deployment
+
+### External connections
+
+**Database connections:**
+
+- Use SSL/TLS for remote database connections
+- Configure firewall rules to restrict database access
+- Use VPN when accessing cloud databases
+- Monitor connection logs for anomalies
+
+## Backup and recovery
+
+Protect against data loss and ensure business continuity.
+
+### Backup strategy
+
+**Automated backups:**
+
+```csharp
+// BMS POS includes SupabaseBackupService for automated backups
+// Configure regular backup schedule (daily recommended)
+```
+
+**Backup best practices:**
+
+- Automate daily backups
+- Store backups on separate device/location
+- Encrypt backup files
+- Test restoration procedures regularly
+- Maintain offsite backup copies
+- Document backup and restore procedures
+
+### Disaster recovery
+
+**Recovery plan should include:**
+
+1. Backup restoration procedures
+2. Alternative POS operations (manual fallback)
+3. Contact information for support
+4. Hardware replacement procedures
+5. Data integrity verification steps
+
+<Warning>
+Test your disaster recovery plan at least quarterly. Untested backups often fail when needed most.
+</Warning>
+
+## Audit and monitoring
+
+### Regular reviews
+
+**Daily tasks:**
+
+- Review failed login attempts
+- Check for unusual transaction patterns
+- Verify system health indicators
+- Monitor available disk space
+
+**Weekly tasks:**
+
+- Generate activity summary reports
+- Review user access patterns
+- Check for software updates
+- Verify backup completion
+
+**Monthly tasks:**
+
+- Comprehensive security audit
+- Review employee access levels
+- Update security documentation
+- Test disaster recovery procedures
+
+### Security metrics
+
+Track key security indicators:
+
+- Failed login attempts per day
+- Number of role mismatch events
+- Average session duration
+- Transaction void frequency
+- Manager override frequency
+- After-hours activity
+
+## Software updates
+
+Keep BMS POS and dependencies up to date.
+
+### Update policy
+
+**Critical updates:**
+
+- Apply security patches immediately
+- Test in staging environment first
+- Schedule downtime during off-hours
+- Maintain rollback plan
+
+**Regular updates:**
+
+- Review release notes for security fixes
+- Update dependencies monthly
+- Test all features after updates
+- Document update history
+
+### Dependency management
+
+```bash
+# Check for outdated packages
+dotnet list package --outdated
+npm outdated
+
+# Update dependencies
+dotnet restore
+npm update
+```
+
+<Warning>
+Always test updates in a non-production environment before deploying to production systems.
+</Warning>
+
+## Compliance considerations
+
+BMS POS is designed for small to medium business operations. Organizations with specific compliance requirements should implement additional controls.
+
+### PCI-DSS considerations
+
+If processing credit card payments:
+
+- Use PA-DSS validated payment terminals
+- Never store full card numbers
+- Encrypt cardholder data in transit and at rest
+- Implement access control and monitoring
+- Conduct regular security assessments
+- Maintain PCI compliance documentation
+
+### Data privacy regulations
+
+For GDPR, CCPA, or similar regulations:
+
+- Document what personal data is collected
+- Implement data retention policies
+- Provide data export capabilities
+- Support data deletion requests
+- Obtain proper consent for data collection
+- Appoint data protection officer if required
+
+### Financial regulations
+
+For financial record keeping:
+
+- Retain transaction records per legal requirements
+- Implement tamper-evident audit logs
+- Support tax reporting requirements
+- Document internal controls
+- Conduct regular financial audits
+
+## Security roadmap
+
+Future security enhancements planned for BMS POS:
+
+### Upcoming features
+
+**Authentication:**
+
+- Two-factor authentication for Manager accounts
+- Biometric authentication support
+- Smart card/badge integration
+- SSO integration for enterprise deployments
+
+**Audit logging:**
+
+- Enhanced tamper protection
+- Cryptographic hash chaining
+- External SIEM integration
+- Automated anomaly detection
+
+**Data protection:**
+
+- Database encryption at rest
+- End-to-end encryption for sensitive data
+- Key management service integration
+- Data loss prevention (DLP) features
+
+**Infrastructure:**
+
+- Application code signing
+- Automated security scanning in CI/CD
+- Vulnerability disclosure program
+- Security certification compliance
+
+## Incident response
+
+### Security incident procedures
+
+If you suspect a security breach:
+
+1. **Contain** - Isolate affected systems immediately
+2. **Assess** - Determine scope and impact
+3. **Document** - Preserve evidence and logs
+4. **Notify** - Inform stakeholders and authorities as required
+5. **Remediate** - Fix vulnerabilities and restore systems
+6. **Review** - Conduct post-incident analysis
+
+### Reporting vulnerabilities
+
+<Warning>
+If you discover a security vulnerability in BMS POS, report it by emailing the maintainers directly. Do not open public issues for security vulnerabilities.
+</Warning>
+
+Include in your report:
+
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact assessment
+- Suggested remediation if known
+- Your contact information
+
+## Resources
+
+### Security references
+
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [BCrypt Documentation](https://github.com/BcryptNet/bcrypt.net)
+- [PostgreSQL Security](https://www.postgresql.org/docs/current/security.html)
+- [PCI Security Standards](https://www.pcisecuritystandards.org/)
+
+### Support
+
+For security questions or concerns:
+
+- Review the [Security Policy](/security/authentication)
+- Check [Audit Logging](/security/audit-logging) documentation
+- Contact your system administrator
+- Report security vulnerabilities privately
+
+## Next steps
+
+<CardGroup cols={3}>
+  <Card title="Authentication" icon="lock" href="/security/authentication">
+    Implement secure PIN-based authentication
+  </Card>
+  <Card title="Roles and permissions" icon="user-shield" href="/security/roles-permissions">
+    Configure role-based access control
+  </Card>
+  <Card title="Audit logging" icon="clipboard-list" href="/security/audit-logging">
+    Monitor user activity and security events
+  </Card>
+</CardGroup>

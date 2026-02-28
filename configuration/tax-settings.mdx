@@ -1,0 +1,199 @@
+---
+title: Tax settings
+description: Configure business information, tax rates, and tax exemptions
+---
+
+Tax settings control how sales tax is calculated and displayed on receipts. Configure your business information, primary and secondary tax rates, and tax exemption options.
+
+## Accessing tax settings
+
+Navigate to **Manager Dashboard** → **Tax Settings** to configure these options. Manager role is required.
+
+<Note>
+  Tax settings are displayed on receipts and used for all sales calculations. Ensure accuracy for compliance with local tax regulations.
+</Note>
+
+## Business information
+
+Configure your business details that appear on receipts and reports.
+
+<ParamField path="businessName" type="string" required>
+  Official business name printed on receipts
+  
+  Example: `BMS Pet Store`
+</ParamField>
+
+<ParamField path="taxNumber" type="string" optional>
+  Tax registration or identification number
+  
+  Example: `123-456-7890` or `VAT-GB123456789`
+  
+  Required in many jurisdictions for tax compliance.
+</ParamField>
+
+<ParamField path="businessAddress" type="string" optional>
+  Complete business address for receipts
+  
+  Example: `123 Main Street, Suite 100, City, State 12345`
+</ParamField>
+
+## Tax configuration
+
+Control whether tax is charged on sales and configure tax rates.
+
+<ParamField path="enableTax" type="boolean" default="true">
+  Master toggle for tax calculations
+  
+  When disabled, no tax is calculated or displayed on any transactions.
+</ParamField>
+
+<Warning>
+  Disabling tax does not exempt your business from tax reporting obligations. Consult with a tax professional before disabling tax calculations.
+</Warning>
+
+### Primary tax
+
+<ParamField path="taxName" type="string" default="Sales Tax">
+  Display name for the primary tax
+  
+  Common examples:
+  - `Sales Tax` (United States)
+  - `VAT` (Europe, UK)
+  - `GST` (Canada, Australia, India)
+  - `Tax` (Generic)
+</ParamField>
+
+<ParamField path="taxRate" type="decimal" default="10">
+  Primary tax rate as a percentage
+  
+  **Range:** 0-100%
+  
+  Example: `10` for 10% tax, `12.5` for 12.5% tax
+</ParamField>
+
+### Secondary tax (optional)
+
+Some regions require multiple tax calculations, such as state and federal tax, or VAT plus service tax.
+
+<ParamField path="enableSecondaryTax" type="boolean" default="false">
+  Enable a second tax calculation
+  
+  When enabled, both primary and secondary taxes are calculated and displayed separately on receipts.
+</ParamField>
+
+<ParamField path="secondaryTaxName" type="string" default="Service Tax">
+  Display name for the secondary tax
+  
+  Common examples:
+  - `Service Tax`
+  - `City Tax`
+  - `Federal Tax`
+  - `Local Tax`
+</ParamField>
+
+<ParamField path="secondaryTaxRate" type="decimal" default="5">
+  Secondary tax rate as a percentage
+  
+  **Range:** 0-100%
+</ParamField>
+
+<Note>
+  Both primary and secondary taxes are calculated on the subtotal and displayed as separate line items on receipts.
+</Note>
+
+## Tax exemptions
+
+Allow tax-exempt sales for qualified customers or organizations.
+
+<ParamField path="enableTaxExemptions" type="boolean" default="false">
+  Enable "Tax Exempt" option in POS
+  
+  When enabled, cashiers can mark transactions as tax-exempt. This is commonly used for:
+  - Non-profit organizations
+  - Government purchases
+  - Resale certificates
+  - Other qualified exemptions
+</ParamField>
+
+<Warning>
+  Tax-exempt transactions should only be processed with proper documentation. Maintain records of tax exemption certificates for compliance.
+</Warning>
+
+## Additional settings
+
+<ParamField path="notes" type="string" optional>
+  Internal notes about tax configuration
+  
+  Use this field to document:
+  - Tax compliance requirements
+  - Special exemption rules
+  - Regional tax regulations
+  - Date of last tax rate update
+</ParamField>
+
+## Tax calculation examples
+
+### Single tax (10% sales tax)
+
+```
+Subtotal:    $100.00
+Sales Tax:   $ 10.00 (10%)
+Total:       $110.00
+```
+
+### Multiple taxes (10% VAT + 5% service tax)
+
+```
+Subtotal:      $100.00
+VAT:           $ 10.00 (10%)
+Service Tax:   $  5.00 (5%)
+Total:         $115.00
+```
+
+### Tax exempt
+
+```
+Subtotal:    $100.00
+Tax:         $  0.00 (Exempt)
+Total:       $100.00
+```
+
+## API endpoint
+
+```http
+GET /api/settings/tax
+POST /api/tax-settings
+```
+
+**Example request:**
+
+```json
+{
+  "businessName": "BMS Pet Store",
+  "taxNumber": "123-456-7890",
+  "businessAddress": "123 Main Street, City, State 12345",
+  "enableTax": true,
+  "taxName": "Sales Tax",
+  "taxRate": 10.0,
+  "enableSecondaryTax": false,
+  "secondaryTaxName": "Service Tax",
+  "secondaryTaxRate": 5.0,
+  "enableTaxExemptions": false,
+  "notes": "Standard state sales tax rate. Last updated: Jan 2024"
+}
+```
+
+## Current tax configuration summary
+
+The tax settings page displays a summary of your current configuration:
+
+- **Tax Status:** Enabled or Disabled
+- **Primary Tax:** Name and rate
+- **Secondary Tax:** Name and rate (if enabled)
+- **Tax Exemptions:** Allowed or Not Allowed
+
+## Next steps
+
+- Configure [System settings](/configuration/system-settings) for receipt content and store information
+- Review [Receipt templates](/configuration/receipt-templates) to see how tax appears on receipts
+- Learn about [Sales processing](/features/sales-processing) with tax calculations

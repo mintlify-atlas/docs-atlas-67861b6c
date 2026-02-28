@@ -1,0 +1,427 @@
+---
+title: Sales
+description: Process sales transactions and retrieve sales analytics in the BMS POS system
+---
+
+The Sales API provides endpoints for processing sales transactions, retrieving sales history, and accessing analytics and reporting data.
+
+## Get sales
+
+Retrieve completed sales transactions.
+
+```bash
+GET /api/sales
+```
+
+### Query parameters
+
+<ParamField query="days" type="integer">
+  Filter sales from the last N days
+</ParamField>
+
+### Response
+
+Returns an array of sale objects with employee and item details.
+
+<ResponseField name="id" type="integer">
+  Unique sale identifier
+</ResponseField>
+
+<ResponseField name="transactionId" type="string">
+  Unique transaction ID (format: TXN-YYYYMMDD-XXXXXXXX)
+</ResponseField>
+
+<ResponseField name="employeeId" type="integer">
+  ID of employee who processed the sale
+</ResponseField>
+
+<ResponseField name="saleDate" type="string">
+  ISO 8601 timestamp of sale
+</ResponseField>
+
+<ResponseField name="subtotal" type="decimal">
+  Subtotal before tax and discounts
+</ResponseField>
+
+<ResponseField name="taxRate" type="decimal">
+  Tax rate percentage applied
+</ResponseField>
+
+<ResponseField name="taxAmount" type="decimal">
+  Tax amount calculated
+</ResponseField>
+
+<ResponseField name="discountAmount" type="decimal">
+  Discount amount applied
+</ResponseField>
+
+<ResponseField name="discountReason" type="string">
+  Reason for discount
+</ResponseField>
+
+<ResponseField name="total" type="decimal">
+  Total amount after tax and discounts
+</ResponseField>
+
+<ResponseField name="amountPaid" type="decimal">
+  Amount paid by customer
+</ResponseField>
+
+<ResponseField name="change" type="decimal">
+  Change given to customer
+</ResponseField>
+
+<ResponseField name="paymentMethod" type="string">
+  Payment method (Cash, Card, etc.)
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Sale status (Completed, Voided, Refunded)
+</ResponseField>
+
+<ResponseField name="saleItems" type="array">
+  Array of items in the sale
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/sales?days=7" \
+  -H "Content-Type: application/json"
+```
+
+## Get sale by ID
+
+Retrieve details of a specific sale.
+
+```bash
+GET /api/sales/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Sale ID
+</ParamField>
+
+## Create sale
+
+Process a new sales transaction.
+
+```bash
+POST /api/sales
+```
+
+### Request body
+
+<ParamField body="employeeId" type="integer" required>
+  ID of employee processing the sale
+</ParamField>
+
+<ParamField body="subtotal" type="decimal" required>
+  Subtotal amount
+</ParamField>
+
+<ParamField body="taxRate" type="decimal" required>
+  Tax rate percentage
+</ParamField>
+
+<ParamField body="taxAmount" type="decimal" required>
+  Tax amount
+</ParamField>
+
+<ParamField body="discountAmount" type="decimal" default="0">
+  Discount amount
+</ParamField>
+
+<ParamField body="discountReason" type="string">
+  Reason for discount
+</ParamField>
+
+<ParamField body="total" type="decimal" required>
+  Total amount
+</ParamField>
+
+<ParamField body="amountPaid" type="decimal" required>
+  Amount paid by customer
+</ParamField>
+
+<ParamField body="change" type="decimal" required>
+  Change to give customer
+</ParamField>
+
+<ParamField body="paymentMethod" type="string" default="Cash">
+  Payment method
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes
+</ParamField>
+
+<ParamField body="items" type="array" required>
+  Array of sale items
+</ParamField>
+
+### Sale item structure
+
+<ParamField body="productId" type="integer" required>
+  Product ID
+</ParamField>
+
+<ParamField body="quantity" type="integer" required>
+  Quantity sold
+</ParamField>
+
+<ParamField body="unitPrice" type="decimal" required>
+  Price per unit
+</ParamField>
+
+<ParamField body="lineTotal" type="decimal" required>
+  Total for this line item
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/sales" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "employeeId": 2,
+    "subtotal": 49.98,
+    "taxRate": 10,
+    "taxAmount": 5.00,
+    "discountAmount": 0,
+    "total": 54.98,
+    "amountPaid": 60.00,
+    "change": 5.02,
+    "paymentMethod": "Cash",
+    "items": [
+      {
+        "productId": 5,
+        "quantity": 2,
+        "unitPrice": 24.99,
+        "lineTotal": 49.98
+      }
+    ]
+  }'
+```
+
+### Validation
+
+- Employee must exist
+- Products must exist and have sufficient stock
+- Stock is automatically reduced when sale is created
+
+### Response
+
+Returns the complete sale object with generated transaction ID.
+
+## Today's sales summary
+
+Get a summary of all sales for the current day.
+
+```bash
+GET /api/sales/today
+```
+
+### Response
+
+<ResponseField name="date" type="string">
+  Date of the summary
+</ResponseField>
+
+<ResponseField name="totalSales" type="integer">
+  Number of sales transactions
+</ResponseField>
+
+<ResponseField name="totalRevenue" type="decimal">
+  Total revenue
+</ResponseField>
+
+<ResponseField name="totalTax" type="decimal">
+  Total tax collected
+</ResponseField>
+
+<ResponseField name="totalDiscounts" type="decimal">
+  Total discounts given
+</ResponseField>
+
+<ResponseField name="sales" type="array">
+  Array of today's sales
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/sales/today" \
+  -H "Content-Type: application/json"
+```
+
+## This week's summary
+
+Get sales summary for the current week.
+
+```bash
+GET /api/sales/this-week
+```
+
+### Response
+
+Returns aggregated sales data for the week (Monday through today).
+
+## This month's summary
+
+Get sales summary for the current month.
+
+```bash
+GET /api/sales/this-month
+```
+
+### Response
+
+Returns aggregated sales data for the current calendar month.
+
+## Top products
+
+Get the best-selling products for a time period.
+
+```bash
+GET /api/sales/top-products
+```
+
+### Query parameters
+
+<ParamField query="days" type="integer" default="7">
+  Number of days to analyze
+</ParamField>
+
+### Response
+
+<ResponseField name="productName" type="string">
+  Product name
+</ResponseField>
+
+<ResponseField name="totalQuantitySold" type="integer">
+  Total units sold
+</ResponseField>
+
+<ResponseField name="totalRevenue" type="decimal">
+  Total revenue generated
+</ResponseField>
+
+<ResponseField name="transactionCount" type="integer">
+  Number of transactions
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/sales/top-products?days=30" \
+  -H "Content-Type: application/json"
+```
+
+## Payment breakdown
+
+Get breakdown of sales by payment method.
+
+```bash
+GET /api/sales/payment-breakdown
+```
+
+### Query parameters
+
+<ParamField query="period" type="string" default="today">
+  Time period: `today`, `week`, or `month`
+</ParamField>
+
+### Response
+
+<ResponseField name="period" type="string">
+  Period label
+</ResponseField>
+
+<ResponseField name="paymentMethods" type="array">
+  Array of payment method summaries
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/sales/payment-breakdown?period=week" \
+  -H "Content-Type: application/json"
+```
+
+## Tax summary
+
+Get tax collection summary for reporting.
+
+```bash
+GET /api/sales/tax-summary
+```
+
+### Query parameters
+
+<ParamField query="period" type="string" default="month">
+  Time period: `week`, `month`, or `year`
+</ParamField>
+
+### Response
+
+<ResponseField name="period" type="string">
+  Period label
+</ResponseField>
+
+<ResponseField name="totalSales" type="integer">
+  Number of sales
+</ResponseField>
+
+<ResponseField name="totalRevenue" type="decimal">
+  Total revenue
+</ResponseField>
+
+<ResponseField name="totalTaxCollected" type="decimal">
+  Total tax collected
+</ResponseField>
+
+<ResponseField name="averageTaxRate" type="decimal">
+  Average tax rate applied
+</ResponseField>
+
+## Employee performance
+
+Get sales performance by employee.
+
+```bash
+GET /api/sales/employee-performance
+```
+
+### Query parameters
+
+<ParamField query="period" type="string" default="month">
+  Time period: `today`, `week`, or `month`
+</ParamField>
+
+### Response
+
+<ResponseField name="employeeName" type="string">
+  Employee name
+</ResponseField>
+
+<ResponseField name="totalSales" type="integer">
+  Number of sales processed
+</ResponseField>
+
+<ResponseField name="totalRevenue" type="decimal">
+  Total revenue generated
+</ResponseField>
+
+<ResponseField name="averageTransactionValue" type="decimal">
+  Average sale amount
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/sales/employee-performance?period=month" \
+  -H "Content-Type: application/json"
+```

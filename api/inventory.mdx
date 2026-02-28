@@ -1,0 +1,428 @@
+---
+title: Inventory
+description: Manage inventory counts and stock adjustments in the BMS POS system
+---
+
+The Inventory API provides endpoints for performing inventory counts and managing stock adjustments with approval workflows.
+
+## Inventory counts
+
+### Get all inventory counts
+
+Retrieve all inventory count sessions.
+
+```bash
+GET /api/inventorycount
+```
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Unique count identifier
+</ResponseField>
+
+<ResponseField name="countName" type="string">
+  Name of the inventory count
+</ResponseField>
+
+<ResponseField name="countType" type="string">
+  Type: `FULL`, `CYCLE`, `SPOT`, or `ANNUAL`
+</ResponseField>
+
+<ResponseField name="startedDate" type="string">
+  When count was started
+</ResponseField>
+
+<ResponseField name="completedDate" type="string">
+  When count was completed
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Status: `IN_PROGRESS`, `COMPLETED`, or `CANCELLED`
+</ResponseField>
+
+<ResponseField name="totalItemsCounted" type="integer">
+  Number of items counted
+</ResponseField>
+
+<ResponseField name="totalDiscrepancies" type="integer">
+  Number of items with discrepancies
+</ResponseField>
+
+<ResponseField name="totalShrinkageValue" type="decimal">
+  Total value of missing inventory
+</ResponseField>
+
+<ResponseField name="totalOverageValue" type="decimal">
+  Total value of excess inventory
+</ResponseField>
+
+<ResponseField name="netVarianceValue" type="decimal">
+  Net variance in inventory value
+</ResponseField>
+
+### Start inventory count
+
+Begin a new inventory count session. Only managers can start counts.
+
+```bash
+POST /api/inventorycount
+```
+
+### Request body
+
+<ParamField body="countName" type="string" required>
+  Name for this count session
+</ParamField>
+
+<ParamField body="countType" type="string" required>
+  Type: `FULL`, `CYCLE`, `SPOT`, or `ANNUAL`
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/inventorycount" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Manager" \
+  -d '{
+    "countName": "Monthly Inventory - March 2024",
+    "countType": "FULL",
+    "notes": "End of month full inventory count"
+  }'
+```
+
+### Validation
+
+- Only one inventory count can be in progress at a time
+- Only managers can start inventory counts
+
+### Get inventory count by ID
+
+Retrieve details of a specific count.
+
+```bash
+GET /api/inventorycount/{id}
+```
+
+### Add count item
+
+Record the counted quantity for a product.
+
+```bash
+POST /api/inventorycount/{countId}/items
+```
+
+### Path parameters
+
+<ParamField path="countId" type="integer" required>
+  Inventory count ID
+</ParamField>
+
+### Request body
+
+<ParamField body="productId" type="integer" required>
+  Product being counted
+</ParamField>
+
+<ParamField body="productBatchId" type="integer">
+  Specific batch being counted (optional)
+</ParamField>
+
+<ParamField body="countedQuantity" type="integer" required>
+  Actual quantity counted
+</ParamField>
+
+<ParamField body="discrepancyReason" type="string">
+  Reason for discrepancy
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/inventorycount/1/items" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Inventory Staff" \
+  -d '{
+    "productId": 5,
+    "countedQuantity": 82,
+    "discrepancyReason": "3 units missing from shelf"
+  }'
+```
+
+### Response
+
+The system automatically:
+
+- Compares counted quantity with system quantity
+- Calculates variance (positive or negative)
+- Calculates variance value based on product cost
+- Logs significant discrepancies for review
+
+### Get count items
+
+Retrieve all items counted in a session.
+
+```bash
+GET /api/inventorycount/{countId}/items
+```
+
+### Complete inventory count
+
+Finalize a count session and optionally apply adjustments.
+
+```bash
+PUT /api/inventorycount/{id}/complete
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Inventory count ID
+</ParamField>
+
+### Request body
+
+<ParamField body="applyAdjustments" type="boolean" default="true">
+  Whether to apply stock adjustments
+</ParamField>
+
+<ParamField body="completionNotes" type="string">
+  Notes about completion
+</ParamField>
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/inventorycount/1/complete" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Manager" \
+  -d '{
+    "applyAdjustments": true,
+    "completionNotes": "All discrepancies reviewed and approved"
+  }'
+```
+
+When `applyAdjustments` is true:
+
+- Product stock quantities are updated to match counted quantities
+- Automatic stock adjustment records are created
+- All adjustments are pre-approved
+
+### Cancel inventory count
+
+Cancel an in-progress count.
+
+```bash
+DELETE /api/inventorycount/{id}
+```
+
+### Get inventory summary
+
+Get aggregated statistics for inventory counts.
+
+```bash
+GET /api/inventorycount/summary
+```
+
+### Query parameters
+
+<ParamField query="startDate" type="string">
+  Filter from date (ISO 8601)
+</ParamField>
+
+<ParamField query="endDate" type="string">
+  Filter to date (ISO 8601)
+</ParamField>
+
+## Stock adjustments
+
+### Get stock adjustments
+
+Retrieve stock adjustment records.
+
+```bash
+GET /api/stockadjustments
+```
+
+### Query parameters
+
+<ParamField query="startDate" type="string">
+  Filter from date (ISO 8601)
+</ParamField>
+
+<ParamField query="endDate" type="string">
+  Filter to date (ISO 8601)
+</ParamField>
+
+<ParamField query="productId" type="integer">
+  Filter by product ID
+</ParamField>
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Adjustment ID
+</ResponseField>
+
+<ResponseField name="productId" type="integer">
+  Product adjusted
+</ResponseField>
+
+<ResponseField name="adjustmentType" type="string">
+  Type: `DAMAGE`, `THEFT`, `EXPIRED`, `FOUND`, `CORRECTION`, or `RETURN`
+</ResponseField>
+
+<ResponseField name="quantityChange" type="integer">
+  Change in quantity (positive or negative)
+</ResponseField>
+
+<ResponseField name="quantityBefore" type="integer">
+  Stock quantity before adjustment
+</ResponseField>
+
+<ResponseField name="quantityAfter" type="integer">
+  Stock quantity after adjustment
+</ResponseField>
+
+<ResponseField name="reason" type="string">
+  Reason for adjustment
+</ResponseField>
+
+<ResponseField name="costImpact" type="decimal">
+  Financial impact of adjustment
+</ResponseField>
+
+<ResponseField name="requiresApproval" type="boolean">
+  Whether approval is required
+</ResponseField>
+
+<ResponseField name="isApproved" type="boolean">
+  Whether adjustment is approved
+</ResponseField>
+
+### Create stock adjustment
+
+Create a manual stock adjustment.
+
+```bash
+POST /api/stockadjustments
+```
+
+### Request body
+
+<ParamField body="productId" type="integer" required>
+  Product to adjust
+</ParamField>
+
+<ParamField body="adjustmentType" type="string" required>
+  Type: `DAMAGE`, `THEFT`, `EXPIRED`, `FOUND`, `CORRECTION`, or `RETURN`
+</ParamField>
+
+<ParamField body="quantityChange" type="integer" required>
+  Change in quantity (use negative for decreases)
+</ParamField>
+
+<ParamField body="reason" type="string" required>
+  Reason for adjustment
+</ParamField>
+
+<ParamField body="notes" type="string">
+  Additional notes
+</ParamField>
+
+<ParamField body="referenceNumber" type="string">
+  Reference number (e.g., damage report ID)
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/stockadjustments" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Inventory Manager" \
+  -d '{
+    "productId": 5,
+    "adjustmentType": "DAMAGE",
+    "quantityChange": -3,
+    "reason": "Water damage from roof leak",
+    "notes": "Damaged during heavy rain on 2024-02-27",
+    "referenceNumber": "DMG-2024-001"
+  }'
+```
+
+### Approval workflow
+
+Adjustments require manager approval when:
+
+- Absolute quantity change > 50 units
+- Absolute cost impact > $500
+- Adjustment type is `THEFT`
+
+Unapproved adjustments are recorded but don't affect stock until approved.
+
+### Get pending approvals
+
+Get adjustments awaiting manager approval.
+
+```bash
+GET /api/stockadjustments/pending-approval
+```
+
+### Approve adjustment
+
+Approve a pending stock adjustment. Only managers can approve.
+
+```bash
+PUT /api/stockadjustments/{id}/approve
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Adjustment ID to approve
+</ParamField>
+
+### Request body
+
+<ParamField body="approvalNotes" type="string">
+  Notes about approval
+</ParamField>
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/stockadjustments/5/approve" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Manager" \
+  -d '{
+    "approvalNotes": "Reviewed damage report, approved for write-off"
+  }'
+```
+
+### Get product adjustments
+
+Get all adjustments for a specific product.
+
+```bash
+GET /api/stockadjustments/product/{productId}
+```
+
+### Path parameters
+
+<ParamField path="productId" type="integer" required>
+  Product ID
+</ParamField>

@@ -1,0 +1,171 @@
+---
+title: Kiosk mode
+description: Configure full-screen kiosk mode for touch screen deployments
+---
+
+Kiosk mode transforms the BMS POS system into a dedicated, full-screen application optimized for touch screens and retail environments.
+
+## Production kiosk mode features
+
+When running in production mode, the application includes:
+
+- **No window frame**: Removes title bar, borders, and window controls
+- **Full-screen mode**: Takes up the entire screen space
+- **No menu bar**: File/Edit/View/Window/Help menus are completely hidden
+- **No context menu**: Right-click functionality is disabled
+- **Always on top**: Prevents other applications from covering the POS
+- **Hidden from taskbar**: Application doesn't appear in the system taskbar
+- **DevTools disabled**: F12 key is disabled for security
+
+## Starting kiosk mode
+
+Use one of these commands to launch in kiosk mode:
+
+```bash
+npm start
+npm run kiosk
+```
+
+Both commands build the React application and launch in full kiosk mode.
+
+## Development mode vs. production mode
+
+<Tabs>
+  <Tab title="Production mode">
+    ```bash
+    npm start
+    npm run kiosk
+    ```
+    
+    Features:
+    - No window frame
+    - Full-screen kiosk mode
+    - DevTools disabled
+    - Right-click disabled
+    - Always on top
+  </Tab>
+  
+  <Tab title="Development mode">
+    ```bash
+    npm run dev
+    npm run dev-touch
+    ```
+    
+    Features:
+    - Windowed mode with frame
+    - DevTools available (F12)
+    - Menu bar visible
+    - Hot reload active
+    - Resizable window
+  </Tab>
+</Tabs>
+
+## Emergency exit shortcuts
+
+Even in locked-down kiosk mode, these shortcuts allow you to exit:
+
+- **Ctrl+Shift+Q**: Quit the application
+- **F11**: Toggle full-screen mode
+- **Alt+F4**: Standard Windows close (if available)
+
+## Touch screen optimization
+
+The kiosk mode is specifically optimized for 10.1" touch screens:
+
+### Touch target sizing
+
+- **Minimum size**: 44px × 44px for all interactive elements
+- **Button spacing**: Adequate gaps to prevent mis-taps
+- **Large keypad**: Easy-to-tap numeric and QWERTY keyboards
+- **No hover effects**: All interactions work with touch only
+
+### Touch behavior settings
+
+- **No text selection**: `user-select: none` prevents accidental text selection
+- **No tap highlights**: Removes blue highlight flashes on touch
+- **Touch action**: `manipulation` for smooth scrolling and zooming
+- **Optimized cursor**: Default cursor for touch interfaces
+
+## Configuring kiosk mode
+
+The window configuration for kiosk mode includes:
+
+```javascript
+{
+  frame: false,                    // No title bar
+  resizable: false,                // Cannot resize
+  fullscreen: true,                // Takes full screen
+  kiosk: true,                     // True kiosk mode
+  alwaysOnTop: true,               // Stays above other windows
+  skipTaskbar: true,               // Hidden from taskbar
+  autoHideMenuBar: true,           // No menu visible
+}
+```
+
+## Screen resolution handling
+
+- **Base resolution**: Designed for 1024×640 base resolution
+- **Scalable layout**: CSS automatically adapts to different screen sizes
+- **Touch-first design**: All interactions optimized for finger input
+- **Minimal scrolling**: Most content fits on screen except employee lists
+
+## Deployment checklist
+
+Before deploying in kiosk mode, verify:
+
+<Steps>
+  <Step title="Touch targets">
+    Ensure all buttons are ≥44px for easy tapping.
+  </Step>
+  
+  <Step title="Touch-only interactions">
+    Verify all features work without hover states.
+  </Step>
+  
+  <Step title="Button spacing">
+    Check that buttons have adequate gaps (6-8px) to prevent mis-taps.
+  </Step>
+  
+  <Step title="Text readability">
+    Confirm fonts are readable (11px+ for content, 10px+ for labels).
+  </Step>
+  
+  <Step title="Contrast">
+    Verify high contrast for bright retail environments.
+  </Step>
+  
+  <Step title="Performance">
+    Test that scrolling and animations are smooth.
+  </Step>
+</Steps>
+
+## Troubleshooting kiosk mode
+
+### App won't start in kiosk mode
+
+```bash
+# Try running with explicit flags
+electron . --no-sandbox --disable-gpu-sandbox
+```
+
+### Touch not working
+
+- Ensure touch screen drivers are installed
+- Check Windows touch calibration settings
+- Verify touch events in DevTools (development mode)
+
+### App is stuck in kiosk mode
+
+- Press **Ctrl+Shift+Q** to quit
+- Use **Alt+Tab** then **Alt+F4** to force close
+- Open Task Manager with **Ctrl+Alt+Del**
+
+## Ideal use cases
+
+Kiosk mode is perfect for:
+
+- **POS terminals**: Dedicated touch screen stations
+- **Self-service kiosks**: Customer-facing interfaces
+- **Tablets**: 10.1" Android/Windows tablets
+- **Industrial screens**: Factory floor terminals
+- **Retail displays**: In-store employee management systems

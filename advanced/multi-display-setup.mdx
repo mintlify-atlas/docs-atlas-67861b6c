@@ -1,0 +1,121 @@
+---
+title: Multi-display setup
+description: Configure BMS POS to run on multiple displays and touch screens
+---
+
+The BMS Point-of-Sale system supports running on multiple displays, with automatic detection of touch screens and manual display targeting options.
+
+## Display detection
+
+The system automatically detects all connected displays and can intelligently select the most appropriate one:
+
+- **Touch screen detection**: Displays with resolution ≤1366×768 pixels are automatically identified as touch screens
+- **Priority order**: Command line flags > Touch screen detection > Secondary display > Primary display
+- **Automatic selection**: The smallest display is typically selected for kiosk mode
+
+## Starting on specific displays
+
+The system provides several npm scripts to launch the application on different displays:
+
+<Tabs>
+  <Tab title="Automatic selection">
+    ```bash
+    npm start
+    ```
+    
+    Automatically launches on the smallest detected display (typically your touch screen).
+  </Tab>
+  
+  <Tab title="Display 0">
+    ```bash
+    npm run display0
+    ```
+    
+    Forces the application to launch on Display 0.
+  </Tab>
+  
+  <Tab title="Display 1">
+    ```bash
+    npm run display1
+    ```
+    
+    Forces the application to launch on Display 1.
+  </Tab>
+  
+  <Tab title="Display 2">
+    ```bash
+    npm run display2
+    ```
+    
+    Forces the application to launch on Display 2 (common for touch screens).
+  </Tab>
+</Tabs>
+
+## Development mode with display selection
+
+For development with hot reload on a specific display:
+
+```bash
+npm run dev           # Automatic display selection
+npm run dev-touch     # Forces Display 2 with development mode
+```
+
+## Switching displays at runtime
+
+While the application is running, you can switch between displays using keyboard shortcuts:
+
+- **Ctrl+Shift+M**: Cycle through all available displays
+- Press repeatedly to move the window to different displays
+
+## Manual display targeting
+
+You can also specify a display using command-line arguments:
+
+```bash
+electron . --no-sandbox --display=2    # Target Display 2
+electron . --no-sandbox --display=0    # Target Display 0
+electron . --no-sandbox --display=1    # Target Display 1
+```
+
+## Common configurations
+
+### Three-display setup
+
+For a typical retail setup with multiple monitors:
+
+1. **Display 0**: 2654×1111 (Large monitor for management)
+2. **Display 1**: 2962×1666 (Primary large monitor for staff)
+3. **Display 2**: 790×495 (10.1" touch screen for customers)
+
+The system will automatically use Display 2 for the POS interface.
+
+### Troubleshooting display issues
+
+<Steps>
+  <Step title="Check console output">
+    Run the application and check the console for "Available displays" information to see which displays were detected.
+  </Step>
+  
+  <Step title="Try manual selection">
+    If automatic detection fails, use `npm run display2` or the appropriate display number.
+  </Step>
+  
+  <Step title="Use keyboard shortcut">
+    While the app is running, press Ctrl+Shift+M to cycle through displays.
+  </Step>
+  
+  <Step title="Verify display connections">
+    Ensure all displays are properly connected and recognized by your operating system.
+  </Step>
+</Steps>
+
+## Display configuration in code
+
+The display selection logic prioritizes:
+
+1. Command line `--display=N` flag (highest priority)
+2. Touch screen detection (displays ≤1366×768)
+3. Secondary displays (non-primary)
+4. Primary display (fallback)
+
+This ensures the POS interface appears on the most appropriate screen for retail operations.

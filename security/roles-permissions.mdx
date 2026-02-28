@@ -1,0 +1,325 @@
+---
+title: Roles and permissions
+description: Understand role-based access control in BMS POS with Manager, Cashier, and Inventory roles
+---
+
+BMS POS implements role-based access control (RBAC) to ensure employees only access features appropriate for their responsibilities.
+
+## User roles
+
+The system supports three distinct user roles, each with specific permissions and access levels.
+
+### Manager role
+
+Managers have full access to all system features and administrative functions.
+
+**Access privileges:**
+
+- Full point-of-sale operations
+- Complete inventory management
+- Employee management and permissions
+- Business settings configuration
+- Financial reports and analytics
+- Transaction history and auditing
+- System configuration and preferences
+- Voiding transactions
+- Applying manager-level discounts
+- Database backup and restore
+
+**Navigation:**
+
+Managers are directed to the main dashboard (`/manager`) which provides access to all system modules.
+
+```typescript Login.tsx:115-118
+case 'Manager':
+  navigate('/manager')
+  break
+```
+
+### Cashier role
+
+Cashiers have access to core point-of-sale functions needed for daily transaction processing.
+
+**Access privileges:**
+
+- Point-of-sale transaction processing
+- Product scanning and manual entry
+- Payment processing (cash, card, etc.)
+- Receipt printing
+- Basic customer information
+- Limited transaction history (own transactions)
+- Shift reports (own shift only)
+
+**Restricted operations:**
+
+- Cannot void transactions without manager approval
+- Cannot apply discounts above set threshold
+- Cannot access employee management
+- Cannot modify system settings
+- Cannot view financial reports
+- Cannot manage inventory
+
+**Navigation:**
+
+Cashiers currently navigate to the main dashboard (`/manager`) with restricted permissions enforced at the feature level.
+
+```typescript Login.tsx:119-121
+case 'Cashier':
+  navigate('/manager')  // Cashiers also go to main dashboard
+  break
+```
+
+<Note>
+While cashiers navigate to the same dashboard as managers, the UI dynamically shows or hides features based on the user's role and permissions.
+</Note>
+
+### Inventory role
+
+Inventory staff have specialized access for managing stock and product information.
+
+**Access privileges:**
+
+- Inventory tracking and updates
+- Stock receiving and adjustments
+- Product information management
+- Low stock alerts and reporting
+- Supplier management
+- Product categories and organization
+- Barcode generation and printing
+
+**Restricted operations:**
+
+- Cannot process sales transactions
+- Cannot access financial reports
+- Cannot manage employees
+- Cannot modify system settings
+- Limited access to transaction history
+
+**Navigation:**
+
+Inventory staff are directed to a specialized dashboard:
+
+```typescript Login.tsx:122-124
+case 'Inventory':
+  navigate('/inventory-dashboard')
+  break
+```
+
+## Role assignment
+
+Roles are assigned to employees in the database and stored in the `Employee` table.
+
+### Role field structure
+
+Employee roles are determined by:
+
+- `Role` field - Explicitly set role ("Manager", "Cashier", or "Inventory")
+- `IsManager` flag - Legacy field for backward compatibility
+
+```typescript Login.tsx:100
+const employeeRole = result.data.employee.role || 
+  (result.data.employee.isManager ? 'Manager' : 'Cashier')
+```
+
+### Role verification on login
+
+The system validates that users select their assigned role during login:
+
+```csharp AuthController.cs:95-120
+// Check role validation if selectedRole is provided
+if (!string.IsNullOrEmpty(request.SelectedRole))
+{
+    var employeeRole = employee.Role ?? (employee.IsManager ? "Manager" : "Cashier");
+    Console.WriteLine($"Role validation - Employee role: {employeeRole}, Selected role: {request.SelectedRole}");
+    
+    if (!employeeRole.Equals(request.SelectedRole, StringComparison.OrdinalIgnoreCase))
+    {
+        Console.WriteLine("Role mismatch detected");
+        
+        // Log failed login attempt due to role mismatch
+        await LogFailedLoginAttempt(
+            request.EmployeeId, 
+            $"Role mismatch - Employee: {employeeRole}, Selected: {request.SelectedRole}", 
+            employee.Id
+        );
+        
+        return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(
+            $"You are registered as a {employeeRole}. Please select '{employeeRole}' and try again.",
+            AuthErrorCodes.ROLE_MISMATCH
+        ));
+    }
+}
+```
+
+<Warning>
+Attempting to log in with a role different from your assigned role will result in authentication failure and be logged as a security event.
+</Warning>
+
+## Permission levels
+
+Permissions are enforced at multiple levels throughout the application.
+
+### Backend API authorization
+
+API endpoints check user roles before processing sensitive operations. The user's role is included in the session data and validated for each request.
+
+### Frontend UI controls
+
+The frontend dynamically shows or hides features based on the current user's role:
+
+```typescript
+// Example of role-based UI rendering
+const { role, isManager } = SessionManager.getCurrentUser()
+
+if (isManager) {
+  // Show manager-only features
+}
+```
+
+### Manager approval workflows
+
+Certain operations require manager PIN validation even when initiated by other roles:
+
+```csharp AuthController.cs:158-185
+[HttpPost("validate-manager")]
+public async Task<ActionResult<ValidateManagerResponse>> ValidateManager(ValidateManagerRequest request)
+{
+    // Find managers and verify PIN with hashing support
+    var managers = await _context.Employees
+        .Where(e => (e.Role == "Manager" || e.IsManager == true) && e.IsActive)
+        .ToListAsync();
+
+    // Check PIN against all managers
+    var manager = managers.FirstOrDefault(m => IsValidPin(m.Pin, request.Pin));
+
+    if (manager == null)
+    {
+        return Ok(new ValidateManagerResponse
+        {
+            Success = false,
+            Message = "Invalid manager PIN"
+        });
+    }
+
+    return Ok(new ValidateManagerResponse
+    {
+        Success = true,
+        Message = "Manager PIN validated successfully",
+        ManagerName = manager.Name
+    });
+}
+```
+
+Operations requiring manager approval include:
+
+- Transaction voids and refunds
+- Large discounts or price overrides
+- Cash drawer openings outside of sales
+- Inventory adjustments above threshold
+- Employee permission changes
+
+## Session-based role enforcement
+
+User roles are stored in the session and validated throughout the user's session:
+
+```typescript Login.tsx:104-111
+// Create secure session with role information
+await SessionManager.createSession({
+  id: result.data.employee.id,
+  employeeId: result.data.employee.employeeId,
+  name: result.data.employee.name,
+  role: employeeRole,
+  isManager: result.data.employee.isManager || employeeRole === 'Manager'
+})
+```
+
+The session includes:
+
+- User's assigned role
+- Manager status flag
+- Employee identification
+- Authentication timestamp
+
+<Note>
+Roles cannot be changed during an active session. To switch roles, users must log out and log back in.
+</Note>
+
+## Role selection interface
+
+The login screen presents all three roles, but users must select their assigned role:
+
+```typescript Login.tsx:155-179
+{/* Role Selection */}
+<div>
+  <label className="text-xs font-semibold text-slate-700 uppercase tracking-wide mb-2 block text-center">
+    Role
+  </label>
+  <div className="grid grid-cols-3 gap-2">
+    {(['Cashier', 'Inventory', 'Manager'] as Role[]).map((role) => (
+      <button
+        key={role}
+        type="button"
+        onClick={() => {
+          playKeySound()
+          setSelectedRole(role)
+        }}
+        className={`
+          py-2 rounded border text-sm font-medium transition-all
+          ${selectedRole === role
+            ? 'bg-blue-600 text-white border-blue-600'
+            : 'bg-white text-slate-700 border-slate-200 hover:border-blue-300'
+          }
+        `}
+      >
+        {role}
+      </button>
+    ))}
+  </div>
+</div>
+```
+
+This design:
+
+- Makes role selection explicit and visible
+- Prevents accidental role confusion
+- Creates an audit trail of role selection attempts
+- Provides clear feedback on role assignment errors
+
+## Managing employee roles
+
+Managers can assign and modify employee roles through the employee management interface.
+
+### Best practices for role assignment
+
+**Principle of least privilege:**
+
+- Assign the minimum role necessary for job functions
+- Avoid giving everyone Manager access
+- Regularly review role assignments
+
+**Role segregation:**
+
+- Separate duties between roles to prevent conflicts of interest
+- Don't allow employees to manage their own permissions
+- Use multiple managers for checks and balances
+
+**Training and accountability:**
+
+- Train employees on their role's capabilities and limitations
+- Document role responsibilities in employee onboarding
+- Review audit logs for role-based access patterns
+
+<Warning>
+All role changes are logged in the audit trail. Modifying roles without proper authorization may indicate a security incident.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/security/authentication">
+    Learn about PIN-based authentication
+  </Card>
+  <Card title="Audit logging" icon="clipboard-list" href="/security/audit-logging">
+    Track role-based activity and access
+  </Card>
+</CardGroup>

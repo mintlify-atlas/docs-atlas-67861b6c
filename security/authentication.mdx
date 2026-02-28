@@ -1,0 +1,324 @@
+---
+title: Authentication
+description: Learn how BMS POS implements PIN-based authentication with BCrypt hashing and session management
+---
+
+BMS POS uses a secure PIN-based authentication system with BCrypt password hashing, automatic legacy PIN upgrades, and session-based access control.
+
+## PIN-based authentication
+
+Employees authenticate using their Employee ID and a numeric PIN code. The system supports three user roles:
+
+- **Cashier** - Access to point-of-sale operations
+- **Inventory** - Access to inventory management dashboard
+- **Manager** - Full access to all system features and settings
+
+### Login flow
+
+The authentication process follows these steps:
+
+1. **Employee identification** - User enters their Employee ID
+2. **PIN entry** - User enters their secure PIN (masked as dots)
+3. **Role selection** - User selects their role (Cashier, Inventory, or Manager)
+4. **Validation** - System verifies credentials and role assignment
+5. **Session creation** - Secure session is established upon successful login
+6. **Navigation** - User is directed to their role-specific dashboard
+
+```typescript Login.tsx:79-140
+// Authentication implementation
+const login = async () => {
+  if (!employeeId || !pin) {
+    setStatusMessage('Please enter both Employee ID and PIN')
+    return
+  }
+
+  try {
+    setStatusMessage('Validating credentials...')
+    
+    // Validate credentials via API
+    let result
+    if (window.electronAPI?.validateLogin) {
+      result = await window.electronAPI.validateLogin(employeeId, pin, selectedRole)
+    } else {
+      result = await ApiClient.postJson('/auth/login', { employeeId, pin, selectedRole }, false)
+    }
+
+    if (result.success && result.data?.employee) {
+      const employeeRole = result.data.employee.role || 
+        (result.data.employee.isManager ? 'Manager' : 'Cashier')
+
+      // Create secure session
+      await SessionManager.createSession({
+        id: result.data.employee.id,
+        employeeId: result.data.employee.employeeId,
+        name: result.data.employee.name,
+        role: employeeRole,
+        isManager: result.data.employee.isManager || employeeRole === 'Manager'
+      })
+
+      // Navigate based on role
+      switch (employeeRole) {
+        case 'Manager':
+          navigate('/manager')
+          break
+        case 'Cashier':
+          navigate('/manager')
+          break
+        case 'Inventory':
+          navigate('/inventory-dashboard')
+          break
+      }
+    }
+  } catch (error) {
+    console.error('Login error:', error)
+    alert('Login Failed! Please check your connection and try again.')
+  }
+}
+```
+
+<Note>
+The login interface uses a numeric keypad optimized for fast PIN entry in retail environments.
+</Note>
+
+## BCrypt password hashing
+
+Employee PINs are secured using BCrypt, an industry-standard password hashing algorithm.
+
+### Hash generation
+
+The `PinSecurityService` generates secure hashes with a work factor of 12:
+
+```csharp PinSecurityService.cs:14-28
+private const int WorkFactor = 12; // BCrypt work factor (cost)
+
+public string HashPin(string plainTextPin)
+{
+    if (string.IsNullOrWhiteSpace(plainTextPin))
+        throw new ArgumentException("PIN cannot be null or empty", nameof(plainTextPin));
+
+    // BCrypt automatically generates salt and includes it in the hash
+    return BCrypt.Net.BCrypt.HashPassword(plainTextPin, WorkFactor);
+}
+```
+
+### PIN verification
+
+PIN verification uses constant-time comparison to prevent timing attacks:
+
+```csharp PinSecurityService.cs:30-51
+public bool VerifyPin(string plainTextPin, string hashedPin)
+{
+    if (string.IsNullOrWhiteSpace(plainTextPin) || string.IsNullOrWhiteSpace(hashedPin))
+        return false;
+
+    try
+    {
+        return BCrypt.Net.BCrypt.Verify(plainTextPin, hashedPin);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"PIN verification error: {ex.Message}");
+        return false;
+    }
+}
+```
+
+<Warning>
+BCrypt's work factor of 12 provides strong protection against brute-force attacks while maintaining acceptable performance for authentication.
+</Warning>
+
+### Legacy PIN upgrade
+
+The system automatically upgrades plaintext PINs to hashed versions on first login:
+
+```csharp AuthController.cs:189-211
+private bool IsValidPin(string storedPin, string providedPin)
+{
+    // Check if stored PIN is legacy (plaintext)
+    if (_pinSecurityService.IsLegacyPin(storedPin))
+    {
+        // Legacy plaintext comparison
+        bool isValid = storedPin == providedPin;
+        
+        // If valid, upgrade to hashed PIN in background
+        if (isValid)
+        {
+            _ = Task.Run(async () => await UpgradeLegacyPinAsync(storedPin, providedPin));
+        }
+        
+        return isValid;
+    }
+    else
+    {
+        // Modern hashed PIN verification
+        return _pinSecurityService.VerifyPin(providedPin, storedPin);
+    }
+}
+```
+
+Legacy PINs are identified by their format - BCrypt hashes always start with `$2` followed by version information:
+
+```csharp PinSecurityService.cs:53-67
+public bool IsLegacyPin(string pin)
+{
+    if (string.IsNullOrWhiteSpace(pin))
+        return false;
+
+    // BCrypt hashes have format: $2a$12$... or $2b$12$...
+    // If it doesn't start with $2, it's plaintext (legacy)
+    return !pin.StartsWith("$2");
+}
+```
+
+## Session management
+
+BMS POS uses session-based authentication to maintain user context throughout the application.
+
+### Session creation
+
+When a user successfully logs in, the system creates a session containing:
+
+- Employee ID and database ID
+- Employee name
+- Assigned role (Cashier, Inventory, or Manager)
+- Manager status flag
+- Session timestamp
+
+```typescript Login.tsx:104-111
+// Create secure session
+await SessionManager.createSession({
+  id: result.data.employee.id,
+  employeeId: result.data.employee.employeeId,
+  name: result.data.employee.name,
+  role: employeeRole,
+  isManager: result.data.employee.isManager || employeeRole === 'Manager'
+})
+```
+
+### Session storage
+
+<Note>
+Session tokens are stored in browser localStorage, which is appropriate for the desktop kiosk deployment model where physical device security is assumed.
+</Note>
+
+### Auto-logout
+
+The system supports configurable auto-logout after a period of inactivity to prevent unauthorized access when employees step away from the terminal.
+
+## Role validation
+
+The authentication system validates that users log in with their assigned role:
+
+```csharp AuthController.cs:95-120
+// Check role validation if selectedRole is provided
+if (!string.IsNullOrEmpty(request.SelectedRole))
+{
+    var employeeRole = employee.Role ?? (employee.IsManager ? "Manager" : "Cashier");
+    
+    if (!employeeRole.Equals(request.SelectedRole, StringComparison.OrdinalIgnoreCase))
+    {
+        // Log failed login attempt due to role mismatch
+        await LogFailedLoginAttempt(
+            request.EmployeeId, 
+            $"Role mismatch - Employee: {employeeRole}, Selected: {request.SelectedRole}", 
+            employee.Id
+        );
+        
+        return Unauthorized(ApiResponse<LoginResponse>.ErrorResponse(
+            $"You are registered as a {employeeRole}. Please select '{employeeRole}' and try again.",
+            AuthErrorCodes.ROLE_MISMATCH
+        ));
+    }
+}
+```
+
+<Warning>
+Role mismatch attempts are logged as failed authentication events for security auditing.
+</Warning>
+
+## Failed login tracking
+
+All failed login attempts are logged with details for security monitoring:
+
+```csharp AuthController.cs:243-267
+private async Task LogFailedLoginAttempt(string employeeId, string reason, int? employeeDbId)
+{
+    try
+    {
+        await _userActivityService.LogActivityAsync(
+            null, // No valid user ID for failed attempts
+            employeeId,
+            $"Failed login attempt for employee ID: {employeeId}",
+            reason,
+            "Employee",
+            employeeDbId,
+            "LOGIN_FAILED",
+            HttpContext.Connection?.RemoteIpAddress?.ToString()
+        );
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Error logging failed login: {ex.Message}");
+        // Don't throw - logging failure shouldn't break authentication
+    }
+}
+```
+
+Failed login attempts are tracked for these scenarios:
+
+- **Employee not found** - Invalid Employee ID
+- **Invalid PIN** - Incorrect PIN for valid Employee ID
+- **Role mismatch** - User selected wrong role for their account
+- **Account inactive** - Account has been deactivated
+
+## Manager PIN validation
+
+Sensitive operations require manager approval through a secondary PIN validation:
+
+```csharp AuthController.cs:158-185
+[HttpPost("validate-manager")]
+public async Task<ActionResult<ValidateManagerResponse>> ValidateManager(ValidateManagerRequest request)
+{
+    // Find managers and verify PIN with hashing support
+    var managers = await _context.Employees
+        .Where(e => (e.Role == "Manager" || e.IsManager == true) && e.IsActive)
+        .ToListAsync();
+
+    // Check PIN against all managers (supports both legacy and hashed PINs)
+    var manager = managers.FirstOrDefault(m => IsValidPin(m.Pin, request.Pin));
+
+    if (manager == null)
+    {
+        return Ok(new ValidateManagerResponse
+        {
+            Success = false,
+            Message = "Invalid manager PIN"
+        });
+    }
+
+    return Ok(new ValidateManagerResponse
+    {
+        Success = true,
+        Message = "Manager PIN validated successfully",
+        ManagerName = manager.Name
+    });
+}
+```
+
+This feature is used for operations like:
+
+- Voiding transactions
+- Applying discounts above cashier limits
+- Accessing sensitive reports
+- Modifying system settings
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Roles and permissions" icon="user-shield" href="/security/roles-permissions">
+    Learn about role-based access control
+  </Card>
+  <Card title="Audit logging" icon="clipboard-list" href="/security/audit-logging">
+    Track user activity and system events
+  </Card>
+</CardGroup>

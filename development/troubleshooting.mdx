@@ -1,0 +1,512 @@
+---
+title: Troubleshooting
+description: Common issues and solutions for developing with the BMS POS system
+---
+
+This guide covers common issues you may encounter during development and how to resolve them.
+
+## API issues
+
+<Accordion title="API won't start">
+If the API fails to start or crashes immediately:
+
+**Check the logs:**
+```bash
+cat logs/comprehensive-*.json
+```
+
+Look for error messages in the most recent log file.
+
+**Verify database connection:**
+```bash
+cd BMS_POS_API
+dotnet run --urls="http://localhost:5002"
+```
+
+Watch the console output for connection errors.
+
+**Common causes:**
+- Invalid database credentials in `.env`
+- Database server not accessible
+- Missing or corrupted `.env` file
+- Port 5002 already in use
+
+**Solution:**
+1. Verify your `.env` file exists and has correct credentials
+2. Test database connection manually with `psql`
+3. Check if another process is using port 5002
+4. Ensure PostgreSQL is running and accessible
+</Accordion>
+
+<Accordion title="Database connection errors">
+If you see connection timeout or authentication errors:
+
+**Verify connection string:**
+```bash
+echo $BMS_DB_SERVER
+echo $BMS_DB_USER
+```
+
+**Test connection manually:**
+```bash
+psql -h $BMS_DB_SERVER -U $BMS_DB_USER -d postgres
+```
+
+**Common issues:**
+- Incorrect Supabase host (should include `.supabase.co`)
+- Wrong database port (should be 5432)
+- SSL mode not set to `Require`
+- Firewall blocking database connection
+
+**Solution:**
+1. Double-check credentials from Supabase dashboard
+2. Ensure connection string includes `SSL Mode=Require`
+3. Verify your IP is allowed in Supabase settings
+4. Test connection from same environment as API
+</Accordion>
+
+<Accordion title="Port already in use">
+If you see `EADDRINUSE` or port conflict errors:
+
+**Find the process using the port:**
+```bash
+# For API (port 5002)
+lsof -i :5002
+
+# For Vite (port 3001)
+lsof -i :3001
+```
+
+**Kill the process:**
+```bash
+kill -9 <PID>
+```
+
+**Or use a different port:**
+```bash
+# API
+dotnet run --urls="http://localhost:5003"
+
+# Vite
+npm run dev-vite -- --port 3002
+```
+
+Remember to update `VITE_API_BASE_URL` if you change the API port.
+</Accordion>
+
+<Accordion title="Swagger UI not accessible">
+If `/swagger` endpoint doesn't work:
+
+**Check environment:**
+Swagger is only enabled in development mode.
+
+**Verify API is running:**
+```bash
+curl http://localhost:5002/health
+```
+
+**Check Swagger configuration** in `Program.cs`:
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+```
+
+**Solution:**
+- Ensure `ASPNETCORE_ENVIRONMENT=Development`
+- Access at `http://localhost:5002/swagger`
+- Check browser console for CORS errors
+</Accordion>
+
+## Frontend issues
+
+<Accordion title="Frontend can't connect to API">
+If the frontend shows connection errors or "Network Error" messages:
+
+**Verify API is running:**
+```bash
+curl http://localhost:5002/health
+```
+
+Should return `{"status":"Healthy"}`.
+
+**Check environment variable:**
+```bash
+echo $VITE_API_BASE_URL
+```
+
+Should be `http://localhost:5002` for development.
+
+**Verify in browser console:**
+1. Open DevTools (F12)
+2. Go to Network tab
+3. Look for failed API requests
+4. Check if requests are going to correct URL
+
+**Common causes:**
+- API not running
+- Wrong `VITE_API_BASE_URL` value
+- CORS configuration issue
+- Firewall blocking requests
+
+**Solution:**
+1. Start the API with `./dev.sh` or manually
+2. Verify `.env` has correct `VITE_API_BASE_URL`
+3. Check API logs for CORS errors
+4. Restart Vite after changing `.env`
+</Accordion>
+
+<Accordion title="Electron window won't open">
+If Electron fails to launch or shows a blank screen:
+
+**Check Vite dev server:**
+```bash
+curl http://localhost:3001
+```
+
+Electron needs Vite to be running first.
+
+**Check Electron logs:**
+Look for errors in the terminal where you ran `npm run dev`.
+
+**Verify window configuration** in `src/electron/main.js`:
+```javascript
+const mainWindow = new BrowserWindow({
+  width: 1280,
+  height: 720,
+  webPreferences: {
+    preload: path.join(__dirname, 'preload.js'),
+    contextIsolation: true,
+    nodeIntegration: false
+  }
+});
+```
+
+**Solution:**
+1. Start Vite first: `npm run dev-vite`
+2. Wait for Vite to show "ready" message
+3. Then start Electron: `npm run dev`
+4. Or use `./dev.sh` to start everything in correct order
+</Accordion>
+
+<Accordion title="Hot reload not working">
+If changes to React components don't update automatically:
+
+**Check Vite dev server:**
+Look for errors in the terminal running Vite.
+
+**Verify HMR is enabled:**
+Vite should show `[vite] connected` in browser console.
+
+**Common causes:**
+- File watchers limit exceeded (Linux)
+- Component not exported correctly
+- Syntax errors preventing compilation
+- Browser cache issues
+
+**Solution:**
+
+**For Linux file watcher limit:**
+```bash
+echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
+```
+
+**For other issues:**
+1. Check terminal for Vite errors
+2. Hard refresh browser (Ctrl+Shift+R)
+3. Restart Vite dev server
+4. Clear browser cache
+</Accordion>
+
+<Accordion title="Tailwind styles not applying">
+If Tailwind CSS classes aren't working:
+
+**Check class names:**
+Ensure you're using valid Tailwind classes.
+
+**Verify Tailwind config:**
+Check `tailwind.config.js` includes your component paths:
+```javascript
+content: [
+  "./src/frontend/**/*.{js,jsx,ts,tsx}",
+],
+```
+
+**Check for typos:**
+Tailwind won't generate classes with typos.
+
+**Solution:**
+1. Verify class names in Tailwind documentation
+2. Restart Vite after changing `tailwind.config.js`
+3. Check browser DevTools to see if styles are generated
+4. Use Tailwind CSS IntelliSense extension in VS Code
+</Accordion>
+
+## Database issues
+
+<Accordion title="Migration issues">
+If migrations fail to apply:
+
+**List migrations:**
+```bash
+cd BMS_POS_API
+dotnet ef migrations list
+```
+
+**Try manual migration:**
+```bash
+dotnet ef database update
+```
+
+**Common errors:**
+- Pending migrations conflict with existing schema
+- Foreign key constraint violations
+- Column type mismatches
+
+**Solution:**
+1. Check migration code in `Migrations/` folder
+2. Review error message for specific constraint
+3. May need to rollback and fix migration
+4. See the [Migrations](/development/migrations) guide for details
+</Accordion>
+
+<Accordion title="Supabase connection timeout">
+If database operations timeout:
+
+**Check Supabase status:**
+Visit Supabase dashboard to verify database is running.
+
+**Verify connection pooling:**
+Supabase has connection limits on free tier.
+
+**Check connection string:**
+Ensure SSL mode is set correctly:
+```
+SSL Mode=Require
+```
+
+**Solution:**
+1. Check Supabase dashboard for service status
+2. Reduce connection pool size in API configuration
+3. Upgrade Supabase plan if hitting connection limits
+4. Implement connection retry logic
+</Accordion>
+
+<Accordion title="Data not persisting">
+If changes aren't saved to the database:
+
+**Check API logs:**
+```bash
+cat logs/comprehensive-*.json | grep ERROR
+```
+
+**Verify DbContext is saving:**
+Look for `SaveChangesAsync()` calls in controllers.
+
+**Check for validation errors:**
+Ensure all required fields are provided.
+
+**Common causes:**
+- Missing `SaveChangesAsync()` call
+- Validation failures
+- Transaction rollback
+- Foreign key constraint violations
+
+**Solution:**
+1. Add logging to controller methods
+2. Check for validation errors in API response
+3. Verify all required relationships are set
+4. Review Entity Framework logs
+</Accordion>
+
+## Build and deployment issues
+
+<Accordion title="Build fails">
+If `npm run build` or `dotnet build` fails:
+
+**For React build errors:**
+```bash
+npm run build-react
+```
+
+Check for TypeScript errors or missing dependencies.
+
+**For .NET build errors:**
+```bash
+cd BMS_POS_API
+dotnet build
+```
+
+Look for compilation errors in C# code.
+
+**Common issues:**
+- TypeScript type errors
+- Missing npm packages
+- NuGet package version conflicts
+- Syntax errors in code
+
+**Solution:**
+1. Fix all TypeScript errors shown in output
+2. Run `npm install` to ensure dependencies are installed
+3. Run `dotnet restore` to restore NuGet packages
+4. Check for breaking changes after package updates
+</Accordion>
+
+<Accordion title="Missing dependencies">
+If you see "module not found" or package errors:
+
+**For npm packages:**
+```bash
+npm install
+```
+
+**For .NET packages:**
+```bash
+cd BMS_POS_API
+dotnet restore
+```
+
+**Verify package.json and .csproj:**
+Ensure all dependencies are listed.
+
+**Solution:**
+1. Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
+2. Clear NuGet cache: `dotnet nuget locals all --clear`
+3. Check for package version conflicts
+4. Ensure you're using compatible Node.js and .NET versions
+</Accordion>
+
+## Authentication issues
+
+<Accordion title="Cannot log in with default credentials">
+If default manager account (0001 / 1234) doesn't work:
+
+**Check if account exists:**
+Query the database directly or check API logs.
+
+**Verify PIN hashing:**
+The system should automatically upgrade plaintext PINs to BCrypt on first login.
+
+**Create default manager manually:**
+Run the seed data script or use Swagger to create an employee.
+
+**Solution:**
+1. Check `employees` table in database
+2. Verify `is_active = true` for the account
+3. Ensure role is set to "Manager"
+4. Try resetting PIN through admin panel
+</Accordion>
+
+<Accordion title="Session expires immediately">
+If you're logged out right after logging in:
+
+**Check auto-logout setting:**
+Verify `auto_logout_minutes` in `system_settings` table.
+
+**Verify session storage:**
+Check browser localStorage for session data.
+
+**Common causes:**
+- Auto-logout set to 0 or very low value
+- Clock skew between client and server
+- Session storage being cleared
+
+**Solution:**
+1. Update auto-logout setting in System Settings
+2. Check browser console for session errors
+3. Verify system time is correct
+4. Clear browser cache and cookies
+</Accordion>
+
+## Performance issues
+
+<Accordion title="Slow API responses">
+If API endpoints take a long time to respond:
+
+**Check database query performance:**
+Enable EF Core query logging in `appsettings.json`:
+```json
+"Logging": {
+  "LogLevel": {
+    "Microsoft.EntityFrameworkCore.Database.Command": "Information"
+  }
+}
+```
+
+**Profile slow endpoints:**
+Use browser DevTools Network tab to identify slow requests.
+
+**Common causes:**
+- Missing database indexes
+- N+1 query problems
+- Large dataset without pagination
+- Inefficient queries
+
+**Solution:**
+1. Add indexes to frequently queried columns
+2. Use `.Include()` to avoid N+1 queries
+3. Implement pagination for large datasets
+4. Optimize LINQ queries
+</Accordion>
+
+<Accordion title="High memory usage">
+If the application consumes excessive memory:
+
+**Check for memory leaks:**
+Monitor memory usage over time.
+
+**Profile the application:**
+Use .NET diagnostic tools:
+```bash
+dotnet-counters monitor -p <PID>
+```
+
+**Common causes:**
+- Large query results not being disposed
+- Event listeners not being removed
+- DbContext not being disposed properly
+- Circular references in objects
+
+**Solution:**
+1. Ensure DbContext is used with `using` statements
+2. Dispose of large objects explicitly
+3. Implement proper pagination
+4. Use streaming for large file operations
+</Accordion>
+
+## Still having issues?
+
+If you're experiencing an issue not covered here:
+
+1. **Check the logs** - Look in `logs/comprehensive-{date}.json` for detailed error information
+2. **Review the API documentation** - Visit `/swagger` endpoint for API reference
+3. **Check the health endpoint** - Visit `/health` to verify API is running
+4. **Search GitHub issues** - Someone may have encountered the same problem
+5. **Enable detailed logging** - Set log level to "Debug" in admin settings
+
+### Diagnostic commands
+
+Run these commands to gather diagnostic information:
+
+```bash
+# Check if services are running
+curl http://localhost:5002/health
+curl http://localhost:3001
+
+# View recent API logs
+tail -f logs/comprehensive-*.json | jq .
+
+# Check database connection
+psql -h $BMS_DB_SERVER -U $BMS_DB_USER -d postgres -c "SELECT version();"
+
+# List running processes
+lsof -i :5002
+lsof -i :3001
+
+# Check environment variables
+env | grep BMS_
+env | grep VITE_
+```

@@ -1,0 +1,116 @@
+---
+title: Project structure
+description: Understanding the BMS POS system folder organization and architecture
+---
+
+The BMS Point-of-Sale System follows a clear separation of concerns with distinct frontend, backend, and configuration layers.
+
+## Root structure
+
+```
+BMS_POS/
+├── src/                    # Application source code
+├── BMS_POS_API/           # .NET Core REST API
+├── scripts/               # Development scripts
+├── .env                   # Environment variables (not committed)
+├── .env.example           # Template for .env
+└── package.json          # Node.js dependencies and scripts
+```
+
+## Frontend directory
+
+The `src/frontend/` directory contains the React + TypeScript application:
+
+```
+src/
+├── frontend/              # React + TypeScript application
+│   ├── components/        # 25+ feature components
+│   │   ├── Login.tsx
+│   │   ├── POS.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Inventory.tsx
+│   │   ├── Manager.tsx
+│   │   ├── Returns.tsx
+│   │   ├── Reports.tsx
+│   │   └── ui/           # shadcn/ui components
+│   ├── contexts/         # React Context for state
+│   ├── utils/            # API client, session manager
+│   └── App.tsx           # Main routing
+│
+└── electron/             # Electron main process
+    ├── main.js           # Multi-display support
+    └── preload.js        # IPC bridge
+```
+
+## Backend directory
+
+The `BMS_POS_API/` directory contains the .NET Core API:
+
+```
+BMS_POS_API/
+├── Controllers/          # 11 API endpoints
+├── Models/               # 14 database entities
+├── Services/             # Business logic
+├── Middleware/           # Logging & error handling
+├── Migrations/           # EF Core migrations
+└── Program.cs            # Auto-migration on startup
+```
+
+### API controllers
+
+The API includes controllers for:
+
+- **Authentication** - PIN-based login and manager validation
+- **Employees** - User management and PIN resets
+- **Products** - Catalog, barcode scanning, and stock alerts
+- **Sales** - Transaction processing and reporting
+- **Returns** - Return processing and approval workflows
+- **Inventory** - Batch tracking and stock adjustments
+- **Settings** - System, tax, and admin configuration
+- **Audit** - User activity logging
+- **Health** - API health checks
+
+## Configuration files
+
+Key configuration files in the root:
+
+- **`.env`** - Environment variables for database connection (not committed to version control)
+- **`.env.example`** - Template showing required environment variables
+- **`package.json`** - Frontend dependencies and npm scripts
+- **`BMS_POS_API.csproj`** - Backend dependencies and .NET project configuration
+
+## Development scripts
+
+The `scripts/` directory contains:
+
+- **`dev.sh`** - Single command to start all services (API, Vite, Electron)
+
+## Multi-display support
+
+The Electron layer supports multi-display configurations through `src/electron/main.js`:
+
+- Primary display (`npm run display0`)
+- Secondary display (`npm run display1`)
+- Tertiary display (`npm run display2`)
+- Touch-enabled display (`npm run dev-touch`)
+
+## Logging
+
+All API requests are logged to structured JSON files:
+
+```
+logs/
+└── comprehensive-{date}.json
+```
+
+Log files include timestamps, user IDs, actions, and detailed context for debugging and audit trails.
+
+## Architecture benefits
+
+- **Separation of concerns** - Frontend, backend, and database layers are clearly separated
+- **Type safety** - TypeScript on frontend, C# on backend
+- **Hot reload** - Fast development with Vite
+- **Structured logging** - JSON logs for analysis
+- **Real-time database** - Supabase subscriptions enabled
+- **Offline-ready** - Electron works without internet (API must be local)
+- **Cross-platform** - Windows, macOS, Linux support

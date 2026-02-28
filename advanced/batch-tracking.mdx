@@ -1,0 +1,167 @@
+---
+title: Batch tracking
+description: Track inventory by batch numbers, lot numbers, and expiration dates
+---
+
+Batch tracking allows you to manage inventory at a granular level by tracking individual batches of products with lot numbers, manufacturing dates, and expiration dates.
+
+## Overview
+
+The batch tracking system enables you to:
+
+- Track products by supplier lot numbers
+- Monitor manufacturing and expiration dates
+- Identify batches by unique batch numbers
+- View expiry status for each batch
+- Manage product recalls by batch
+
+## Adding product batches
+
+To add a new product batch:
+
+<Steps>
+  <Step title="Navigate to inventory management">
+    Access **Advanced Inventory Management** from the Manager dashboard.
+  </Step>
+  
+  <Step title="Select the Expiring Products tab">
+    Click on the **Expiring Products** tab to access batch management.
+  </Step>
+  
+  <Step title="Search for the product">
+    Use the search field to find the product by name or barcode.
+  </Step>
+  
+  <Step title="Enter batch details">
+    Fill in the following information:
+    - **Manufacturing date**: When the product was manufactured
+    - **Expiry date**: When the product expires
+    - **Supplier lot number**: The supplier's lot/batch identifier
+    - **Quantity**: Number of units in this batch
+  </Step>
+  
+  <Step title="Add the batch">
+    Click **Add Batch** to create the batch record.
+  </Step>
+</Steps>
+
+The system automatically generates a unique batch number in the format:
+```
+BATCH-YYYYMMDD-HHMMSS-XXX
+```
+
+For example: `BATCH-20260228-143052-742`
+
+## Batch information
+
+Each batch record contains:
+
+- **Batch number**: Auto-generated unique identifier
+- **Product**: The product this batch belongs to
+- **Quantity**: Number of units in the batch
+- **Supplier**: Source of the batch (defaults to "Manual Entry")
+- **Lot number**: Supplier's lot number (optional)
+- **Manufacturing date**: When the product was produced (optional)
+- **Expiration date**: When the product expires (optional)
+- **Received date**: When the batch was added to inventory
+- **Cost per unit**: Cost for tracking purposes
+
+## Expiry status tracking
+
+Batches are automatically categorized by expiry status:
+
+- **CRITICAL**: Expired or expires within 7 days (red badge)
+- **WARNING**: Expires within 30 days (orange badge)
+- **CAUTION**: Expires within 90 days (yellow badge)
+- **GOOD**: More than 90 days until expiry (green badge)
+
+## Managing expired batches
+
+When a batch reaches CRITICAL status:
+
+<Steps>
+  <Step title="Identify the batch">
+    Review batches with red CRITICAL badges in the Expiring Products tab.
+  </Step>
+  
+  <Step title="Mark as expired">
+    Click the **Mark as Expired** button on the batch card.
+  </Step>
+  
+  <Step title="Create adjustment">
+    The system automatically populates a stock adjustment form with:
+    - Adjustment type: EXPIRED
+    - Quantity: Negative value matching batch quantity
+    - Reason: "Expired batch: [batch-number]"
+  </Step>
+  
+  <Step title="Submit adjustment">
+    Review and submit the stock adjustment to remove the expired inventory.
+  </Step>
+</Steps>
+
+## Viewing batch details
+
+In the **Expiring Products** tab, you can view:
+
+- All product batches across your inventory
+- Batch numbers and quantities
+- Supplier information
+- Expiration dates and days remaining
+- Color-coded expiry status badges
+
+## Batch tracking best practices
+
+### For food and beverage
+
+- Always enter expiration dates for perishable items
+- Record supplier lot numbers for traceability
+- Review CRITICAL batches daily
+- Set up regular expiry checks
+
+### For pharmaceuticals
+
+- Track both manufacturing and expiration dates
+- Maintain detailed lot numbers from suppliers
+- Follow FIFO (First In, First Out) inventory rotation
+- Document all expired batch removals
+
+### For retail products
+
+- Enter expiration dates for time-sensitive items
+- Use batch numbers for warranty tracking
+- Monitor seasonal product expiry
+- Track batches for product recalls
+
+## Batch reporting
+
+Batch information is included in:
+
+- Stock adjustment records
+- Inventory count reports
+- Expiration tracking reports
+- Activity logs for audit trails
+
+## API integration
+
+Batches are managed through the REST API:
+
+```javascript
+// Add a batch
+POST /products/:productId/batches
+{
+  batchNumber: "BATCH-20260228-143052-742",
+  quantity: 100,
+  costPerUnit: 5.00,
+  receivedDate: "2026-02-28T14:30:52Z",
+  expirationDate: "2026-12-31T00:00:00Z",
+  manufacturingDate: "2026-02-01T00:00:00Z",
+  supplier: "ABC Suppliers",
+  lotNumber: "LOT-2024-XYZ"
+}
+
+// Get expiring batches
+GET /products/expiring?days=365
+```
+
+See InventoryManagement.tsx:658-674 for implementation details.

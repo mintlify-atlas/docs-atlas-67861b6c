@@ -1,0 +1,427 @@
+---
+title: Products
+description: Manage products, inventory, and batch tracking in the BMS POS system
+---
+
+The Products API provides comprehensive endpoints for managing product catalog, inventory levels, batch tracking, and stock operations.
+
+## Get all products
+
+Retrieve all active products in the system.
+
+```bash
+GET /api/products
+```
+
+### Response
+
+Returns an array of product objects ordered by name.
+
+<ResponseField name="id" type="integer">
+  Unique product identifier
+</ResponseField>
+
+<ResponseField name="barcode" type="string">
+  Product barcode (max 50 characters)
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Product name (max 200 characters)
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Product description (max 500 characters)
+</ResponseField>
+
+<ResponseField name="price" type="decimal">
+  Selling price
+</ResponseField>
+
+<ResponseField name="cost" type="decimal">
+  Cost per unit
+</ResponseField>
+
+<ResponseField name="stockQuantity" type="integer">
+  Current stock level
+</ResponseField>
+
+<ResponseField name="minStockLevel" type="integer">
+  Minimum stock threshold for low stock alerts
+</ResponseField>
+
+<ResponseField name="variant" type="string">
+  Product variant (e.g., size, color)
+</ResponseField>
+
+<ResponseField name="brand" type="string">
+  Product brand
+</ResponseField>
+
+<ResponseField name="category" type="string">
+  Product category
+</ResponseField>
+
+<ResponseField name="unit" type="string">
+  Unit of measurement (pcs, kg, liter, etc.)
+</ResponseField>
+
+<ResponseField name="isActive" type="boolean">
+  Whether the product is active
+</ResponseField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/products" \
+  -H "Content-Type: application/json"
+```
+
+## Get product by ID
+
+Retrieve details of a specific product.
+
+```bash
+GET /api/products/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Product ID
+</ParamField>
+
+## Get product by barcode
+
+Lookup a product using its barcode (useful for scanning operations).
+
+```bash
+GET /api/products/barcode/{barcode}
+```
+
+### Path parameters
+
+<ParamField path="barcode" type="string" required>
+  Product barcode
+</ParamField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/products/barcode/1234567890" \
+  -H "Content-Type: application/json"
+```
+
+## Get low stock products
+
+Retrieve products that are at or below their minimum stock level.
+
+```bash
+GET /api/products/low-stock
+```
+
+### Response
+
+Returns products where `stockQuantity <= minStockLevel`, ordered by stock quantity (lowest first).
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/products/low-stock" \
+  -H "Content-Type: application/json"
+```
+
+## Get expiring products
+
+Retrieve product batches that are expiring within a specified timeframe.
+
+```bash
+GET /api/products/expiring
+```
+
+### Query parameters
+
+<ParamField query="days" type="integer" default="30">
+  Number of days to look ahead for expiring products
+</ParamField>
+
+### Response
+
+Returns an array of product batch objects with expiration dates within the specified window.
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/products/expiring?days=30" \
+  -H "Content-Type: application/json"
+```
+
+## Create product
+
+Add a new product to the catalog.
+
+```bash
+POST /api/products
+```
+
+### Request body
+
+<ParamField body="barcode" type="string" required>
+  Unique product barcode
+</ParamField>
+
+<ParamField body="name" type="string" required>
+  Product name
+</ParamField>
+
+<ParamField body="description" type="string">
+  Product description
+</ParamField>
+
+<ParamField body="price" type="decimal" required>
+  Selling price (must be greater than zero)
+</ParamField>
+
+<ParamField body="cost" type="decimal" required>
+  Cost per unit (cannot be negative)
+</ParamField>
+
+<ParamField body="stockQuantity" type="integer" default="0">
+  Initial stock quantity (cannot be negative)
+</ParamField>
+
+<ParamField body="minStockLevel" type="integer" default="5">
+  Minimum stock threshold
+</ParamField>
+
+<ParamField body="variant" type="string">
+  Product variant
+</ParamField>
+
+<ParamField body="brand" type="string">
+  Product brand
+</ParamField>
+
+<ParamField body="category" type="string">
+  Product category
+</ParamField>
+
+<ParamField body="unit" type="string" default="pcs">
+  Unit of measurement
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/products" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Admin" \
+  -d '{
+    "barcode": "1234567890",
+    "name": "Premium Coffee Beans",
+    "description": "Arabica coffee beans from Colombia",
+    "price": 24.99,
+    "cost": 12.50,
+    "stockQuantity": 100,
+    "minStockLevel": 10,
+    "brand": "Colombian Gold",
+    "category": "Beverages",
+    "unit": "kg"
+  }'
+```
+
+## Update product
+
+Update an existing product's details.
+
+```bash
+PUT /api/products/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Product ID to update
+</ParamField>
+
+### Request body
+
+Same as create product. The system logs price changes and flags major price adjustments (>20% change) for review.
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/products/5" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Manager" \
+  -d '{
+    "id": 5,
+    "barcode": "1234567890",
+    "name": "Premium Coffee Beans",
+    "price": 29.99,
+    "cost": 12.50,
+    "stockQuantity": 85,
+    "minStockLevel": 10,
+    "isActive": true
+  }'
+```
+
+## Update stock quantity
+
+Adjust a product's stock quantity directly.
+
+```bash
+PUT /api/products/{id}/stock
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Product ID
+</ParamField>
+
+### Request body
+
+<ParamField body="newQuantity" type="integer" required>
+  New stock quantity (cannot be negative)
+</ParamField>
+
+<ParamField body="reason" type="string">
+  Reason for stock adjustment
+</ParamField>
+
+### Example request
+
+```bash
+curl -X PUT "https://api.example.com/api/products/5/stock" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Manager" \
+  -d '{
+    "newQuantity": 150,
+    "reason": "Received new shipment"
+  }'
+```
+
+### Response
+
+```json
+{
+  "productId": 5,
+  "oldQuantity": 85,
+  "newQuantity": 150,
+  "updatedAt": "2024-02-28T14:30:00Z"
+}
+```
+
+## Delete product
+
+Permanently remove a product from the system.
+
+```bash
+DELETE /api/products/{id}
+```
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  Product ID to delete
+</ParamField>
+
+### Example request
+
+```bash
+curl -X DELETE "https://api.example.com/api/products/5" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Manager"
+```
+
+## Batch management
+
+### Get product batches
+
+Retrieve all batches for a specific product.
+
+```bash
+GET /api/products/{productId}/batches
+```
+
+### Path parameters
+
+<ParamField path="productId" type="integer" required>
+  Product ID
+</ParamField>
+
+### Example request
+
+```bash
+curl -X GET "https://api.example.com/api/products/5/batches" \
+  -H "Content-Type: application/json"
+```
+
+### Create product batch
+
+Add a new batch of products with tracking information.
+
+```bash
+POST /api/products/{productId}/batches
+```
+
+### Path parameters
+
+<ParamField path="productId" type="integer" required>
+  Product ID
+</ParamField>
+
+### Request body
+
+<ParamField body="batchNumber" type="string" required>
+  Unique batch identifier
+</ParamField>
+
+<ParamField body="quantity" type="integer" required>
+  Number of units in batch (must be greater than zero)
+</ParamField>
+
+<ParamField body="costPerUnit" type="decimal" required>
+  Cost per unit in this batch (cannot be negative)
+</ParamField>
+
+<ParamField body="receivedDate" type="string">
+  Date batch was received (ISO 8601 format)
+</ParamField>
+
+<ParamField body="expirationDate" type="string">
+  Expiration date (ISO 8601 format)
+</ParamField>
+
+<ParamField body="manufacturingDate" type="string">
+  Manufacturing date (ISO 8601 format)
+</ParamField>
+
+<ParamField body="supplier" type="string">
+  Supplier name
+</ParamField>
+
+<ParamField body="lotNumber" type="string">
+  Lot number from manufacturer
+</ParamField>
+
+### Example request
+
+```bash
+curl -X POST "https://api.example.com/api/products/5/batches" \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 1" \
+  -H "X-User-Name: Inventory Manager" \
+  -d '{
+    "batchNumber": "BATCH-2024-001",
+    "quantity": 50,
+    "costPerUnit": 12.50,
+    "receivedDate": "2024-02-28T10:00:00Z",
+    "expirationDate": "2025-02-28T00:00:00Z",
+    "supplier": "Colombian Gold Distributors",
+    "lotNumber": "LOT-2024-A-123"
+  }'
+```
