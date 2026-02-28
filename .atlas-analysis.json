@@ -1,0 +1,137 @@
+{
+  "projectType": "saas",
+  "projectName": "BMS Point of Sale System",
+  "projectDescription": "A comprehensive, full-stack Point-of-Sale system with advanced inventory, sales, and employee management features built with Electron and .NET 8.",
+  "theme": "linden",
+  "primaryColor": "#2563eb",
+  "lightColor": "#60a5fa",
+  "darkColor": "#1e40af",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart",
+              "architecture"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/sales-processing",
+              "features/inventory-management",
+              "features/employee-management",
+              "features/returns-refunds"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/system-settings",
+              "configuration/tax-settings",
+              "configuration/receipt-templates",
+              "configuration/payment-methods"
+            ]
+          },
+          {
+            "group": "Advanced Features",
+            "pages": [
+              "advanced/multi-display-setup",
+              "advanced/kiosk-mode",
+              "advanced/batch-tracking",
+              "advanced/inventory-counts",
+              "advanced/reports-analytics"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/authentication",
+              "security/roles-permissions",
+              "security/audit-logging",
+              "security/best-practices"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/project-structure",
+              "development/database-schema",
+              "development/migrations",
+              "development/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/introduction",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/employees",
+              "api/products",
+              "api/sales",
+              "api/returns",
+              "api/inventory",
+              "api/settings",
+              "api/user-activity"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "PIN-based authentication with role-based access control",
+    "Multi-item sales processing with tax and discount calculations",
+    "Comprehensive inventory management with batch tracking",
+    "Returns and refunds with manager approval workflow",
+    "Employee management and performance tracking",
+    "Sales analytics and reporting dashboard",
+    "Customizable receipt templates and thermal printing",
+    "Multi-display support for customer-facing screens",
+    "Barcode scanning and product lookup",
+    "Audit logging for compliance and security",
+    "PostgreSQL database with Entity Framework Core",
+    "REST API with Swagger documentation"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/login",
+    "POST /api/auth/validate-manager",
+    "GET /api/employees",
+    "POST /api/employees",
+    "PUT /api/employees/{id}",
+    "GET /api/products",
+    "GET /api/products/barcode/{barcode}",
+    "POST /api/products",
+    "PUT /api/products/{id}",
+    "GET /api/sales",
+    "GET /api/sales/today",
+    "GET /api/sales/top-products",
+    "POST /api/sales",
+    "GET /api/returns",
+    "POST /api/returns",
+    "PUT /api/returns/{id}/approve",
+    "GET /api/inventorycount",
+    "POST /api/inventorycount",
+    "PUT /api/inventorycount/{id}/complete",
+    "GET /api/tax-settings",
+    "GET /api/system-settings",
+    "POST /api/system-settings",
+    "GET /api/user-activity",
+    "GET /health"
+  ]
+}
